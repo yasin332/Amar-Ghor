@@ -3,6 +3,37 @@ import { motion } from 'framer-motion'
 
 const TenantHomepage = ({ language = 'en' }) => {
   const [activeTab, setActiveTab] = useState('overview')
+  
+  // Modal states
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false)
+  const [showMessageModal, setShowMessageModal] = useState(false)
+  const [showContactModal, setShowContactModal] = useState(false)
+  const [showLeaseModal, setShowLeaseModal] = useState(false)
+  
+  // Form states
+  const [paymentForm, setPaymentForm] = useState({
+    amount: 15000,
+    method: 'bankTransfer',
+    reference: ''
+  })
+  
+  const [maintenanceForm, setMaintenanceForm] = useState({
+    issue: '',
+    description: '',
+    priority: 'medium',
+    location: ''
+  })
+  
+  const [messageForm, setMessageForm] = useState({
+    subject: '',
+    message: ''
+  })
+  
+  const [contactForm, setContactForm] = useState({
+    type: 'general',
+    message: ''
+  })
 
   const translations = {
     en: {
@@ -70,7 +101,49 @@ const TenantHomepage = ({ language = 'en' }) => {
       newMessage: "New Message",
       sendMessage: "Send Message",
       cancel: "Cancel",
-      submit: "Submit"
+      submit: "Submit",
+      // Payment Modal
+      paymentGateway: "Payment Gateway",
+      selectPaymentMethod: "Select Payment Method",
+      bankTransfer: "Bank Transfer",
+      mobileBanking: "Mobile Banking",
+      cash: "Cash",
+      paymentReference: "Payment Reference",
+      enterReference: "Enter transaction reference",
+      processPayment: "Process Payment",
+      paymentSuccessful: "Payment Successful!",
+      // Maintenance Modal
+      submitMaintenanceRequest: "Submit Maintenance Request",
+      issueTitle: "Issue Title",
+      enterIssue: "Enter brief description of issue",
+      detailedDescription: "Detailed Description",
+      describeIssue: "Describe the problem in detail",
+      location: "Location",
+      enterLocation: "Which room/area?",
+      selectPriority: "Select Priority",
+      submitRequest: "Submit Request",
+      requestSubmitted: "Request Submitted Successfully!",
+      // Message Modal
+      composeMessage: "Compose Message",
+      messageSubject: "Subject",
+      enterSubject: "Enter message subject",
+      messageContent: "Message",
+      enterMessage: "Type your message here...",
+      messageSent: "Message Sent Successfully!",
+      // Contact Modal
+      contactLandlordTitle: "Contact Landlord",
+      contactType: "Contact Type",
+      general: "General Inquiry",
+      emergency: "Emergency",
+      complaint: "Complaint",
+      contactMessage: "Message",
+      sendContact: "Send Message",
+      contactSent: "Message Sent Successfully!",
+      // Lease Modal
+      leaseDocument: "Lease Document",
+      downloadLease: "Download PDF",
+      printLease: "Print Document",
+      leaseTerms: "Lease Terms & Conditions"
     },
     bn: {
       welcome: "স্বাগতম",
@@ -137,7 +210,49 @@ const TenantHomepage = ({ language = 'en' }) => {
       newMessage: "নতুন বার্তা",
       sendMessage: "বার্তা পাঠান",
       cancel: "বাতিল",
-      submit: "জমা দিন"
+      submit: "জমা দিন",
+      // Payment Modal
+      paymentGateway: "পেমেন্ট গেটওয়ে",
+      selectPaymentMethod: "পেমেন্ট পদ্ধতি নির্বাচন করুন",
+      bankTransfer: "ব্যাংক ট্রান্সফার",
+      mobileBanking: "মোবাইল ব্যাংকিং",
+      cash: "নগদ",
+      paymentReference: "পেমেন্ট রেফারেন্স",
+      enterReference: "লেনদেনের রেফারেন্স দিন",
+      processPayment: "পেমেন্ট প্রক্রিয়া করুন",
+      paymentSuccessful: "পেমেন্ট সফল হয়েছে!",
+      // Maintenance Modal
+      submitMaintenanceRequest: "রক্ষণাবেক্ষণের অনুরোধ জমা দিন",
+      issueTitle: "সমস্যার শিরোনাম",
+      enterIssue: "সমস্যার সংক্ষিপ্ত বিবরণ দিন",
+      detailedDescription: "বিস্তারিত বিবরণ",
+      describeIssue: "সমস্যাটি বিস্তারিত বর্ণনা করুন",
+      location: "অবস্থান",
+      enterLocation: "কোন ঘর/এলাকা?",
+      selectPriority: "অগ্রাধিকার নির্বাচন করুন",
+      submitRequest: "অনুরোধ জমা দিন",
+      requestSubmitted: "অনুরোধ সফলভাবে জমা দেওয়া হয়েছে!",
+      // Message Modal
+      composeMessage: "বার্তা লিখুন",
+      messageSubject: "বিষয়",
+      enterSubject: "বার্তার বিষয় লিখুন",
+      messageContent: "বার্তা",
+      enterMessage: "এখানে আপনার বার্তা লিখুন...",
+      messageSent: "বার্তা সফলভাবে পাঠানো হয়েছে!",
+      // Contact Modal
+      contactLandlordTitle: "বাড়িওয়ালার সাথে যোগাযোগ",
+      contactType: "যোগাযোগের ধরন",
+      general: "সাধারণ অনুসন্ধান",
+      emergency: "জরুরি",
+      complaint: "অভিযোগ",
+      contactMessage: "বার্তা",
+      sendContact: "বার্তা পাঠান",
+      contactSent: "বার্তা সফলভাবে পাঠানো হয়েছে!",
+      // Lease Modal
+      leaseDocument: "লিজ ডকুমেন্ট",
+      downloadLease: "পিডিএফ ডাউনলোড করুন",
+      printLease: "ডকুমেন্ট প্রিন্ট করুন",
+      leaseTerms: "লিজের শর্তাবলী"
     }
   }
 
@@ -260,6 +375,54 @@ const TenantHomepage = ({ language = 'en' }) => {
     }
   }
 
+  // Handler functions
+  const handlePayment = (e) => {
+    e.preventDefault()
+    // Simulate payment processing
+    setTimeout(() => {
+      alert(t.paymentSuccessful)
+      setShowPaymentModal(false)
+      setPaymentForm({ amount: 15000, method: 'bankTransfer', reference: '' })
+      // Update payment history (in real app, this would be handled by backend)
+    }, 1000)
+  }
+
+  const handleMaintenanceRequest = (e) => {
+    e.preventDefault()
+    // Simulate request submission
+    setTimeout(() => {
+      alert(t.requestSubmitted)
+      setShowMaintenanceModal(false)
+      setMaintenanceForm({ issue: '', description: '', priority: 'medium', location: '' })
+      // Add to maintenance requests (in real app, this would be handled by backend)
+    }, 500)
+  }
+
+  const handleSendMessage = (e) => {
+    e.preventDefault()
+    // Simulate message sending
+    setTimeout(() => {
+      alert(t.messageSent)
+      setShowMessageModal(false)
+      setMessageForm({ subject: '', message: '' })
+      // Add to messages (in real app, this would be handled by backend)
+    }, 500)
+  }
+
+  const handleContactLandlord = (e) => {
+    e.preventDefault()
+    // Simulate contact message
+    setTimeout(() => {
+      alert(t.contactSent)
+      setShowContactModal(false)
+      setContactForm({ type: 'general', message: '' })
+    }, 500)
+  }
+
+  const handleViewLease = () => {
+    setShowLeaseModal(true)
+  }
+
   const StatCard = ({ title, value, icon, actionButton, onClick }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -298,7 +461,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           value={`${t.dueIn} ${tenantData.daysUntilDue} ${t.days}`} 
           icon="📅"
           actionButton={t.payNow}
-          onClick={() => alert('Payment gateway would open here')}
+          onClick={() => setShowPaymentModal(true)}
         />
         <StatCard 
           title={t.totalPaid} 
@@ -321,19 +484,31 @@ const TenantHomepage = ({ language = 'en' }) => {
       >
         <h3 className="text-lg font-semibold text-slate-800 mb-4">{t.quickActions}</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group">
+          <button 
+            onClick={() => setShowPaymentModal(true)}
+            className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group"
+          >
             <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">💳</span>
             <span className="text-sm font-medium text-slate-700">{t.payRent}</span>
           </button>
-          <button className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group">
+          <button 
+            onClick={() => setShowMaintenanceModal(true)}
+            className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group"
+          >
             <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">🔧</span>
             <span className="text-sm font-medium text-slate-700">{t.requestMaintenance}</span>
           </button>
-          <button className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group">
+          <button 
+            onClick={() => setShowContactModal(true)}
+            className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group"
+          >
             <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">📞</span>
             <span className="text-sm font-medium text-slate-700">{t.contactLandlord}</span>
           </button>
-          <button className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group">
+          <button 
+            onClick={handleViewLease}
+            className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group"
+          >
             <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">📄</span>
             <span className="text-sm font-medium text-slate-700">{t.viewLease}</span>
           </button>
@@ -461,7 +636,10 @@ const TenantHomepage = ({ language = 'en' }) => {
     >
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold text-slate-800">{t.paymentHistory}</h3>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors">
+        <button 
+          onClick={() => setShowPaymentModal(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+        >
           {t.payNow}
         </button>
       </div>
@@ -507,7 +685,10 @@ const TenantHomepage = ({ language = 'en' }) => {
       <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-slate-200">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-slate-800">{t.maintenanceRequests}</h3>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors">
+          <button 
+            onClick={() => setShowMaintenanceModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+          >
             {t.requestMaintenance}
           </button>
         </div>
@@ -565,7 +746,10 @@ const TenantHomepage = ({ language = 'en' }) => {
       <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-slate-200">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-slate-800">{t.messageHistory}</h3>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors">
+          <button 
+            onClick={() => setShowMessageModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+          >
             {t.newMessage}
           </button>
         </div>
@@ -598,6 +782,291 @@ const TenantHomepage = ({ language = 'en' }) => {
         ))}
       </div>
     </motion.div>
+  )
+
+  // Modal Component
+  const Modal = ({ isOpen, onClose, title, children }) => {
+    if (!isOpen) return null
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+        >
+          <div className="flex justify-between items-center p-6 border-b border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 text-xl"
+            >
+              ×
+            </button>
+          </div>
+          <div className="p-6">{children}</div>
+        </motion.div>
+      </div>
+    )
+  }
+
+  // Payment Modal
+  const PaymentModal = () => (
+    <Modal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} title={t.paymentGateway}>
+      <form onSubmit={handlePayment} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.amount}</label>
+          <input
+            type="number"
+            value={paymentForm.amount}
+            onChange={(e) => setPaymentForm(prev => ({...prev, amount: e.target.value}))}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.selectPaymentMethod}</label>
+          <select
+            value={paymentForm.method}
+            onChange={(e) => setPaymentForm(prev => ({...prev, method: e.target.value}))}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="bankTransfer">{t.bankTransfer}</option>
+            <option value="mobileBanking">{t.mobileBanking}</option>
+            <option value="cash">{t.cash}</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.paymentReference}</label>
+          <input
+            type="text"
+            value={paymentForm.reference}
+            onChange={(e) => setPaymentForm(prev => ({...prev, reference: e.target.value}))}
+            placeholder={t.enterReference}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div className="flex gap-3 pt-4">
+          <button
+            type="button"
+            onClick={() => setShowPaymentModal(false)}
+            className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+          >
+            {t.cancel}
+          </button>
+          <button
+            type="submit"
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            {t.processPayment}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+
+  // Maintenance Modal
+  const MaintenanceModal = () => (
+    <Modal isOpen={showMaintenanceModal} onClose={() => setShowMaintenanceModal(false)} title={t.submitMaintenanceRequest}>
+      <form onSubmit={handleMaintenanceRequest} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.issueTitle}</label>
+          <input
+            type="text"
+            value={maintenanceForm.issue}
+            onChange={(e) => setMaintenanceForm(prev => ({...prev, issue: e.target.value}))}
+            placeholder={t.enterIssue}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.detailedDescription}</label>
+          <textarea
+            value={maintenanceForm.description}
+            onChange={(e) => setMaintenanceForm(prev => ({...prev, description: e.target.value}))}
+            placeholder={t.describeIssue}
+            rows="3"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.location}</label>
+          <input
+            type="text"
+            value={maintenanceForm.location}
+            onChange={(e) => setMaintenanceForm(prev => ({...prev, location: e.target.value}))}
+            placeholder={t.enterLocation}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.selectPriority}</label>
+          <select
+            value={maintenanceForm.priority}
+            onChange={(e) => setMaintenanceForm(prev => ({...prev, priority: e.target.value}))}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="low">{t.low}</option>
+            <option value="medium">{t.medium}</option>
+            <option value="high">{t.high}</option>
+          </select>
+        </div>
+        <div className="flex gap-3 pt-4">
+          <button
+            type="button"
+            onClick={() => setShowMaintenanceModal(false)}
+            className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+          >
+            {t.cancel}
+          </button>
+          <button
+            type="submit"
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            {t.submitRequest}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+
+  // Message Modal
+  const MessageModal = () => (
+    <Modal isOpen={showMessageModal} onClose={() => setShowMessageModal(false)} title={t.composeMessage}>
+      <form onSubmit={handleSendMessage} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.messageSubject}</label>
+          <input
+            type="text"
+            value={messageForm.subject}
+            onChange={(e) => setMessageForm(prev => ({...prev, subject: e.target.value}))}
+            placeholder={t.enterSubject}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.messageContent}</label>
+          <textarea
+            value={messageForm.message}
+            onChange={(e) => setMessageForm(prev => ({...prev, message: e.target.value}))}
+            placeholder={t.enterMessage}
+            rows="4"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div className="flex gap-3 pt-4">
+          <button
+            type="button"
+            onClick={() => setShowMessageModal(false)}
+            className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+          >
+            {t.cancel}
+          </button>
+          <button
+            type="submit"
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            {t.sendMessage}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+
+  // Contact Modal
+  const ContactModal = () => (
+    <Modal isOpen={showContactModal} onClose={() => setShowContactModal(false)} title={t.contactLandlordTitle}>
+      <form onSubmit={handleContactLandlord} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.contactType}</label>
+          <select
+            value={contactForm.type}
+            onChange={(e) => setContactForm(prev => ({...prev, type: e.target.value}))}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="general">{t.general}</option>
+            <option value="emergency">{t.emergency}</option>
+            <option value="complaint">{t.complaint}</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.contactMessage}</label>
+          <textarea
+            value={contactForm.message}
+            onChange={(e) => setContactForm(prev => ({...prev, message: e.target.value}))}
+            placeholder={t.enterMessage}
+            rows="4"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div className="flex gap-3 pt-4">
+          <button
+            type="button"
+            onClick={() => setShowContactModal(false)}
+            className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+          >
+            {t.cancel}
+          </button>
+          <button
+            type="submit"
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            {t.sendContact}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+
+  // Lease Modal
+  const LeaseModal = () => (
+    <Modal isOpen={showLeaseModal} onClose={() => setShowLeaseModal(false)} title={t.leaseDocument}>
+      <div className="space-y-4">
+        <div className="bg-slate-50 p-4 rounded-lg">
+          <h4 className="font-semibold text-slate-800 mb-2">{t.leaseTerms}</h4>
+          <div className="space-y-2 text-sm text-slate-700">
+            <p><strong>Property:</strong> {tenantData.property}</p>
+            <p><strong>Tenant:</strong> {tenantData.name}</p>
+            <p><strong>Landlord:</strong> {tenantData.landlord}</p>
+            <p><strong>Lease Period:</strong> {tenantData.leaseStart} - {tenantData.leaseEnd}</p>
+            <p><strong>Monthly Rent:</strong> {t.taka}{tenantData.monthlyRent.toLocaleString()}</p>
+            <p><strong>Security Deposit:</strong> {t.taka}{tenantData.securityDeposit.toLocaleString()}</p>
+          </div>
+        </div>
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <h5 className="font-medium text-slate-800 mb-2">Terms & Conditions:</h5>
+          <ul className="text-sm text-slate-700 space-y-1 list-disc list-inside">
+            <li>Rent is due on the 1st of each month</li>
+            <li>Late payment fee of 5% applies after 5 days</li>
+            <li>Property must be maintained in good condition</li>
+            <li>No subletting without written permission</li>
+            <li>24-hour notice required for landlord visits</li>
+            <li>Security deposit refundable upon satisfactory inspection</li>
+          </ul>
+        </div>
+        <div className="flex gap-3 pt-4">
+          <button
+            onClick={() => setShowLeaseModal(false)}
+            className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+          >
+            {t.cancel}
+          </button>
+          <button
+            onClick={() => alert('Download feature would be implemented here')}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            {t.downloadLease}
+          </button>
+        </div>
+      </div>
+    </Modal>
   )
 
   return (
@@ -660,6 +1129,13 @@ const TenantHomepage = ({ language = 'en' }) => {
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <PaymentModal />
+      <MaintenanceModal />
+      <MessageModal />
+      <ContactModal />
+      <LeaseModal />
     </div>
   )
 }

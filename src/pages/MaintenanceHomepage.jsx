@@ -3,9 +3,76 @@ import { motion } from 'framer-motion'
 
 const MaintenanceHomepage = ({ language = 'en' }) => {
   const [activeTab, setActiveTab] = useState('overview')
+  const [currentLanguage, setCurrentLanguage] = useState(language)
+  
+  // Modal states
   const [showCompleteModal, setShowCompleteModal] = useState(false)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [showSuppliesModal, setShowSuppliesModal] = useState(false)
   const [selectedWorkOrder, setSelectedWorkOrder] = useState(null)
+  
+  // Form states
+  const [completionForm, setCompletionForm] = useState({
+    workOrderId: '',
+    completionNotes: '',
+    timeSpent: '',
+    suppliesUsed: '',
+    issuesEncountered: ''
+  })
+  
+  const [suppliesForm, setSuppliesForm] = useState({
+    item: '',
+    quantity: '',
+    urgency: 'medium',
+    reason: ''
+  })
+  
+  const [settingsForm, setSettingsForm] = useState({
+    emailNotifications: true,
+    smsNotifications: false,
+    startTime: '09:00',
+    endTime: '17:00',
+    specialization: 'Plumbing & Electrical'
+  })
+  
+  // Work orders state (to allow updates)
+  const [workOrdersData, setWorkOrdersData] = useState([
+    {
+      id: 1,
+      property: "House 45, Road 12, Dhanmondi",
+      issue: "Leaking faucet in kitchen",
+      priority: "medium",
+      assignedDate: "Dec 20, 2024",
+      status: "pending",
+      description: "Kitchen sink faucet has been dripping for 3 days. Water waste is concerning.",
+      tenant: "Fatima Khan",
+      phone: "01712345678"
+    },
+    {
+      id: 2,
+      property: "Apt 3B, Building 7, Gulshan",
+      issue: "Air conditioning not cooling",
+      priority: "high",
+      assignedDate: "Dec 19, 2024",
+      status: "inProgress",
+      description: "AC in master bedroom stopped working. Need immediate repair due to heat.",
+      tenant: "Rahman Ahmed",
+      phone: "01787654321"
+    },
+    {
+      id: 3,
+      property: "House 12, Road 5, Uttara",
+      issue: "Electrical outlet not working",
+      priority: "low",
+      assignedDate: "Dec 18, 2024",
+      status: "completed",
+      description: "Living room electrical outlet needs repair. May require rewiring.",
+      tenant: "Sarah Khan",
+      phone: "01698765432"
+    }
+  ])
 
   const translations = {
     en: {
@@ -53,7 +120,35 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
       teamSettings: "Team Settings",
       notifications: "Notifications",
       workingHours: "Working Hours",
-      specialization: "Specialization"
+      specialization: "Specialization",
+      // Modal translations
+      completeWorkOrder: "Complete Work Order",
+      completionNotes: "Completion Notes",
+      timeSpent: "Time Spent (hours)",
+      suppliesUsed: "Supplies Used",
+      issuesEncountered: "Issues Encountered",
+      markAsComplete: "Mark as Complete",
+      workOrderDetails: "Work Order Details",
+      tenant: "Tenant",
+      phone: "Phone",
+      description: "Description",
+      reportCompletion: "Report Completion",
+      requestSupplies: "Request Supplies",
+      itemNeeded: "Item Needed",
+      quantity: "Quantity",
+      urgency: "Urgency",
+      reason: "Reason for Request",
+      submitRequest: "Submit Request",
+      cancel: "Cancel",
+      save: "Save",
+      success: "Success!",
+      workOrderCompleted: "Work order marked as completed",
+      reportSubmitted: "Report submitted successfully",
+      suppliesRequested: "Supplies request submitted",
+      settingsUpdated: "Settings updated successfully",
+      generateReport: "Generate Report",
+      emailNotifications: "Email Notifications",
+      smsNotifications: "SMS Notifications"
     },
     bn: {
       welcome: "স্বাগতম",
@@ -100,11 +195,44 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
       teamSettings: "দলের সেটিংস",
       notifications: "বিজ্ঞপ্তি",
       workingHours: "কাজের সময়",
-      specialization: "বিশেষত্ব"
+      specialization: "বিশেষত্ব",
+      // Modal translations
+      completeWorkOrder: "কাজের অর্ডার সম্পন্ন করুন",
+      completionNotes: "সম্পন্নতার নোট",
+      timeSpent: "ব্যয়িত সময় (ঘন্টা)",
+      suppliesUsed: "ব্যবহৃত সরবরাহ",
+      issuesEncountered: "সম্মুখীন সমস্যা",
+      markAsComplete: "সম্পন্ন চিহ্নিত করুন",
+      workOrderDetails: "কাজের অর্ডারের বিস্তারিত",
+      tenant: "ভাড়াটিয়া",
+      phone: "ফোন",
+      description: "বিবরণ",
+      reportCompletion: "সম্পন্নতার রিপোর্ট",
+      requestSupplies: "সরবরাহের অনুরোধ",
+      itemNeeded: "প্রয়োজনীয় আইটেম",
+      quantity: "পরিমাণ",
+      urgency: "জরুরিত্ব",
+      reason: "অনুরোধের কারণ",
+      submitRequest: "অনুরোধ জমা দিন",
+      cancel: "বাতিল",
+      save: "সংরক্ষণ",
+      success: "সফল!",
+      workOrderCompleted: "কাজের অর্ডার সম্পন্ন চিহ্নিত",
+      reportSubmitted: "রিপোর্ট সফলভাবে জমা দেওয়া হয়েছে",
+      suppliesRequested: "সরবরাহের অনুরোধ জমা দেওয়া হয়েছে",
+      settingsUpdated: "সেটিংস সফলভাবে আপডেট হয়েছে",
+      generateReport: "রিপোর্ট তৈরি করুন",
+      emailNotifications: "ইমেইল বিজ্ঞপ্তি",
+      smsNotifications: "এসএমএস বিজ্ঞপ্তি"
     }
   }
 
-  const t = translations[language]
+  const t = translations[currentLanguage]
+
+  // Language switching function
+  const toggleLanguage = () => {
+    setCurrentLanguage(prev => prev === 'en' ? 'bn' : 'en')
+  }
 
   // Sample maintenance team data
   const teamData = {
@@ -116,35 +244,65 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
     specialization: "Plumbing & Electrical"
   }
 
-  const workOrders = [
-    {
-      id: 1,
-      property: "House 45, Road 12, Dhanmondi",
-      issue: "Leaking faucet in kitchen",
-      priority: "medium",
-      assignedDate: "Dec 20, 2024",
-      status: "pending",
-      description: "Kitchen sink faucet has been dripping for 3 days"
-    },
-    {
-      id: 2,
-      property: "Apt 3B, Building 7, Gulshan",
-      issue: "Air conditioning not cooling",
-      priority: "high",
-      assignedDate: "Dec 19, 2024",
-      status: "inProgress",
-      description: "AC in master bedroom stopped working"
-    },
-    {
-      id: 3,
-      property: "House 12, Road 5, Uttara",
-      issue: "Electrical outlet not working",
-      priority: "low",
-      assignedDate: "Dec 18, 2024",
-      status: "completed",
-      description: "Living room electrical outlet needs repair"
-    }
-  ]
+  // Handler functions
+  const handleCompleteWorkOrder = (e) => {
+    e.preventDefault()
+    // Update work order status
+    setWorkOrdersData(prev => 
+      prev.map(order => 
+        order.id === selectedWorkOrder.id 
+          ? { ...order, status: 'completed' }
+          : order
+      )
+    )
+    alert(t.workOrderCompleted)
+    setShowCompleteModal(false)
+    setCompletionForm({
+      workOrderId: '',
+      completionNotes: '',
+      timeSpent: '',
+      suppliesUsed: '',
+      issuesEncountered: ''
+    })
+  }
+
+  const handleViewDetails = (workOrder) => {
+    setSelectedWorkOrder(workOrder)
+    setShowDetailsModal(true)
+  }
+
+  const handleMarkComplete = (workOrder) => {
+    setSelectedWorkOrder(workOrder)
+    setCompletionForm(prev => ({ ...prev, workOrderId: workOrder.id }))
+    setShowCompleteModal(true)
+  }
+
+  const handleReportCompletion = (e) => {
+    e.preventDefault()
+    alert(t.reportSubmitted)
+    setShowReportModal(false)
+  }
+
+  const handleRequestSupplies = (e) => {
+    e.preventDefault()
+    alert(t.suppliesRequested)
+    setShowSuppliesModal(false)
+    setSuppliesForm({
+      item: '',
+      quantity: '',
+      urgency: 'medium',
+      reason: ''
+    })
+  }
+
+  const handleUpdateSettings = (e) => {
+    e.preventDefault()
+    alert(t.settingsUpdated)
+  }
+
+  const handleGenerateReport = (reportType) => {
+    alert(`${t.generateReport}: ${reportType}`)
+  }
 
   const todaysSchedule = [
     { time: "9:00 AM", property: "House 45, Dhanmondi", task: "Fix leaking faucet", duration: "1-2 hours" },
@@ -286,7 +444,7 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
               </tr>
             </thead>
             <tbody>
-              {workOrders.map((order) => (
+              {workOrdersData.map((order) => (
                 <tr key={order.id} className="border-b border-slate-100">
                   <td className="py-3 px-2 text-sm text-slate-800">{order.property}</td>
                   <td className="py-3 px-2 text-sm text-slate-800">{order.issue}</td>
@@ -301,9 +459,22 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
                     </span>
                   </td>
                   <td className="py-3 px-2">
-                    <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                      {order.status === 'completed' ? t.viewDetails : t.markComplete}
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleViewDetails(order)}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        {t.viewDetails}
+                      </button>
+                      {order.status !== 'completed' && (
+                        <button 
+                          onClick={() => handleMarkComplete(order)}
+                          className="text-green-600 hover:text-green-700 text-sm font-medium"
+                        >
+                          {t.markComplete}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -348,15 +519,24 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
       <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 p-6">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">{t.workReports}</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 text-left">
+          <button 
+            onClick={() => handleGenerateReport(t.completionReport)}
+            className="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 text-left transition-all hover:shadow-md"
+          >
             <div className="font-medium text-slate-800">{t.completionReport}</div>
             <div className="text-sm text-slate-600 mt-1">Generate completion summary</div>
           </button>
-          <button className="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 text-left">
+          <button 
+            onClick={() => handleGenerateReport(t.issueReport)}
+            className="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 text-left transition-all hover:shadow-md"
+          >
             <div className="font-medium text-slate-800">{t.issueReport}</div>
             <div className="text-sm text-slate-600 mt-1">Report issues encountered</div>
           </button>
-          <button className="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 text-left">
+          <button 
+            onClick={() => handleGenerateReport(t.monthlyReport)}
+            className="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 text-left transition-all hover:shadow-md"
+          >
             <div className="font-medium text-slate-800">{t.monthlyReport}</div>
             <div className="text-sm text-slate-600 mt-1">Monthly work summary</div>
           </button>
@@ -369,32 +549,315 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
     <div className="space-y-6">
       <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 p-6">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">{t.teamSettings}</h3>
-        <div className="space-y-4">
+        <form onSubmit={handleUpdateSettings} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">{t.notifications}</label>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" className="rounded" defaultChecked />
-              <span className="text-sm text-slate-600">Email notifications for new work orders</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  className="rounded" 
+                  checked={settingsForm.emailNotifications}
+                  onChange={(e) => setSettingsForm(prev => ({...prev, emailNotifications: e.target.checked}))}
+                />
+                <span className="text-sm text-slate-600">{t.emailNotifications}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  className="rounded" 
+                  checked={settingsForm.smsNotifications}
+                  onChange={(e) => setSettingsForm(prev => ({...prev, smsNotifications: e.target.checked}))}
+                />
+                <span className="text-sm text-slate-600">{t.smsNotifications}</span>
+              </div>
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">{t.workingHours}</label>
             <div className="grid grid-cols-2 gap-4">
-              <input type="time" className="border border-slate-300 rounded-lg px-3 py-2" defaultValue="09:00" />
-              <input type="time" className="border border-slate-300 rounded-lg px-3 py-2" defaultValue="17:00" />
+              <input 
+                type="time" 
+                className="border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                value={settingsForm.startTime}
+                onChange={(e) => setSettingsForm(prev => ({...prev, startTime: e.target.value}))}
+              />
+              <input 
+                type="time" 
+                className="border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                value={settingsForm.endTime}
+                onChange={(e) => setSettingsForm(prev => ({...prev, endTime: e.target.value}))}
+              />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">{t.specialization}</label>
             <input 
               type="text" 
-              className="w-full border border-slate-300 rounded-lg px-3 py-2" 
-              defaultValue={teamData.specialization}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+              value={settingsForm.specialization}
+              onChange={(e) => setSettingsForm(prev => ({...prev, specialization: e.target.value}))}
             />
           </div>
-        </div>
+          <div className="pt-4">
+            <button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+            >
+              {t.save}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
+  )
+
+  // Modal Component
+  const Modal = ({ isOpen, onClose, title, children }) => {
+    if (!isOpen) return null
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+        >
+          <div className="flex justify-between items-center p-6 border-b border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 text-xl"
+            >
+              ×
+            </button>
+          </div>
+          <div className="p-6">{children}</div>
+        </motion.div>
+      </div>
+    )
+  }
+
+  // Complete Work Order Modal
+  const CompleteModal = () => (
+    <Modal isOpen={showCompleteModal} onClose={() => setShowCompleteModal(false)} title={t.completeWorkOrder}>
+      <form onSubmit={handleCompleteWorkOrder} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.completionNotes}</label>
+          <textarea
+            value={completionForm.completionNotes}
+            onChange={(e) => setCompletionForm(prev => ({...prev, completionNotes: e.target.value}))}
+            rows="3"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.timeSpent}</label>
+          <input
+            type="number"
+            step="0.5"
+            value={completionForm.timeSpent}
+            onChange={(e) => setCompletionForm(prev => ({...prev, timeSpent: e.target.value}))}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.suppliesUsed}</label>
+          <input
+            type="text"
+            value={completionForm.suppliesUsed}
+            onChange={(e) => setCompletionForm(prev => ({...prev, suppliesUsed: e.target.value}))}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.issuesEncountered}</label>
+          <textarea
+            value={completionForm.issuesEncountered}
+            onChange={(e) => setCompletionForm(prev => ({...prev, issuesEncountered: e.target.value}))}
+            rows="2"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div className="flex gap-3 pt-4">
+          <button
+            type="button"
+            onClick={() => setShowCompleteModal(false)}
+            className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+          >
+            {t.cancel}
+          </button>
+          <button
+            type="submit"
+            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            {t.markAsComplete}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+
+  // Work Order Details Modal
+  const DetailsModal = () => (
+    <Modal isOpen={showDetailsModal} onClose={() => setShowDetailsModal(false)} title={t.workOrderDetails}>
+      {selectedWorkOrder && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-slate-600">{t.property}</label>
+              <p className="text-slate-800 font-medium">{selectedWorkOrder.property}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-600">{t.priority}</label>
+              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(selectedWorkOrder.priority)}`}>
+                {t[selectedWorkOrder.priority]}
+              </span>
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-600">{t.issue}</label>
+            <p className="text-slate-800 font-medium">{selectedWorkOrder.issue}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-600">{t.description}</label>
+            <p className="text-slate-800">{selectedWorkOrder.description}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-slate-600">{t.tenant}</label>
+              <p className="text-slate-800">{selectedWorkOrder.tenant}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-600">{t.phone}</label>
+              <p className="text-slate-800">{selectedWorkOrder.phone}</p>
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-600">{t.assignedDate}</label>
+            <p className="text-slate-800">{selectedWorkOrder.assignedDate}</p>
+          </div>
+          <div className="pt-4">
+            <button
+              onClick={() => setShowDetailsModal(false)}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              {t.cancel}
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+
+  // Report Completion Modal
+  const ReportModal = () => (
+    <Modal isOpen={showReportModal} onClose={() => setShowReportModal(false)} title={t.reportCompletion}>
+      <form onSubmit={handleReportCompletion} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Work Order</label>
+          <select className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            {workOrdersData.filter(order => order.status === 'inProgress').map(order => (
+              <option key={order.id} value={order.id}>
+                {order.issue} - {order.property}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.completionNotes}</label>
+          <textarea
+            rows="4"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Describe what was completed..."
+            required
+          />
+        </div>
+        <div className="flex gap-3 pt-4">
+          <button
+            type="button"
+            onClick={() => setShowReportModal(false)}
+            className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+          >
+            {t.cancel}
+          </button>
+          <button
+            type="submit"
+            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            {t.submitRequest}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+
+  // Request Supplies Modal
+  const SuppliesModal = () => (
+    <Modal isOpen={showSuppliesModal} onClose={() => setShowSuppliesModal(false)} title={t.requestSupplies}>
+      <form onSubmit={handleRequestSupplies} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.itemNeeded}</label>
+          <input
+            type="text"
+            value={suppliesForm.item}
+            onChange={(e) => setSuppliesForm(prev => ({...prev, item: e.target.value}))}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.quantity}</label>
+          <input
+            type="number"
+            value={suppliesForm.quantity}
+            onChange={(e) => setSuppliesForm(prev => ({...prev, quantity: e.target.value}))}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.urgency}</label>
+          <select
+            value={suppliesForm.urgency}
+            onChange={(e) => setSuppliesForm(prev => ({...prev, urgency: e.target.value}))}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="low">{t.low}</option>
+            <option value="medium">{t.medium}</option>
+            <option value="high">{t.high}</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">{t.reason}</label>
+          <textarea
+            value={suppliesForm.reason}
+            onChange={(e) => setSuppliesForm(prev => ({...prev, reason: e.target.value}))}
+            rows="3"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div className="flex gap-3 pt-4">
+          <button
+            type="button"
+            onClick={() => setShowSuppliesModal(false)}
+            className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+          >
+            {t.cancel}
+          </button>
+          <button
+            type="submit"
+            className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+          >
+            {t.submitRequest}
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 
   return (
@@ -406,30 +869,52 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
       </div>
 
       {/* Header */}
-      <div className="relative z-10 bg-white/80 backdrop-blur-sm border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">{t.welcome}, {teamData.name}</h1>
-              <p className="text-slate-600">{t.subtitle}</p>
+      <div className="relative z-20 bg-white/95 backdrop-blur-sm border-b-2 border-slate-300 shadow-sm mt-4">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Top Row with Language Switcher */}
+          <div className="flex justify-end mb-4">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={toggleLanguage}
+              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border border-slate-300"
+            >
+              <span className="text-lg">🌐</span>
+              <span>Language: {currentLanguage === 'en' ? 'EN' : 'বাং'}</span>
+            </motion.button>
+          </div>
+          
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold text-slate-800">{t.welcome}, {teamData.name}</h1>
+              <p className="text-slate-600 text-lg">{t.subtitle}</p>
             </div>
             
             {/* Quick Actions */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
                 onClick={() => setActiveTab('workOrders')}
               >
-                {t.viewWorkOrders}
+                📋 {t.viewWorkOrders}
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
+                onClick={() => setShowReportModal(true)}
               >
-                {t.reportCompletion}
+                ✅ {t.reportCompletion}
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
+                onClick={() => setShowSuppliesModal(true)}
+              >
+                📦 {t.requestSupplies}
               </motion.button>
             </div>
           </div>
@@ -478,6 +963,12 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
           {activeTab === 'settings' && renderSettings()}
         </motion.div>
       </div>
+
+      {/* Modals */}
+      <CompleteModal />
+      <DetailsModal />
+      <ReportModal />
+      <SuppliesModal />
     </div>
   )
 }
