@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { getErrorMessage, isValidEmail } from '../lib/utils'
+import { supabase } from '../lib/supabaseClient'
 
 const LoginPage = ({ language = 'en' }) => {
   const [formData, setFormData] = useState({
@@ -8,6 +10,14 @@ const LoginPage = ({ language = 'en' }) => {
     password: ''
   })
   const [showPassword, setShowPassword] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [isLoading, setIsLoading] = useState(false)
+  
+  const navigate = useNavigate()
+  const location = useLocation()
+  
+  // Get success message from signup
+  const successMessage = location.state?.message
 
   const translations = {
     en: {
@@ -15,54 +25,124 @@ const LoginPage = ({ language = 'en' }) => {
       subtitle: "Sign in to your Amar Ghor account",
       emailLabel: "Email Address",
       emailPlaceholder: "Enter your email",
-      passwordLabel: "Password", 
+      passwordLabel: "Password",
       passwordPlaceholder: "Enter your password",
       showPassword: "Show",
       hidePassword: "Hide",
-      rememberMe: "Remember me",
-      forgotPassword: "Forgot password?",
       loginButton: "Sign In",
+      forgotPassword: "Forgot your password?",
+      orDivider: "OR",
+      phoneLogin: "Continue with Phone",
       noAccount: "Don't have an account?",
       signUpLink: "Sign up here",
-      securityNote: "Your data is protected with bank-level security",
-      orDivider: "Or continue with",
-      phoneLogin: "Phone Number",
-      phoneLoginDesc: "Sign in with your mobile number"
+      securityNote: "Your connection is secure and encrypted"
     },
     bn: {
-      title: "আবার স্বাগতম",
+      title: "স্বাগতম",
       subtitle: "আপনার আমার ঘর অ্যাকাউন্টে সাইন ইন করুন",
-      emailLabel: "ইমেল ঠিকানা",
+      emailLabel: "ইমেল ঠিকানা", 
       emailPlaceholder: "আপনার ইমেল লিখুন",
       passwordLabel: "পাসওয়ার্ড",
-      passwordPlaceholder: "আপনার পাসওয়ার্ড লিখুন", 
+      passwordPlaceholder: "আপনার পাসওয়ার্ড লিখুন",
       showPassword: "দেখান",
-      hidePassword: "লুকান",
-      rememberMe: "আমাকে মনে রাখুন",
-      forgotPassword: "পাসওয়ার্ড ভুলে গেছেন?",
+      hidePassword: "লুকান", 
       loginButton: "সাইন ইন",
-      noAccount: "কোন অ্যাকাউন্ট নেই?",
+      forgotPassword: "পাসওয়ার্ড ভুলে গেছেন?",
+      orDivider: "অথবা",
+      phoneLogin: "ফোন দিয়ে চালিয়ে যান",
+      noAccount: "অ্যাকাউন্ট নেই?",
       signUpLink: "এখানে সাইন আপ করুন",
-      securityNote: "আপনার তথ্য ব্যাংক-স্তরের নিরাপত্তায় সুরক্ষিত",
-      orDivider: "অথবা এটি দিয়ে চালিয়ে যান",
-      phoneLogin: "ফোন নম্বর",
-      phoneLoginDesc: "আপনার মোবাইল নম্বর দিয়ে সাইন ইন করুন"
+      securityNote: "আপনার সংযোগ নিরাপদ এবং এনক্রিপ্ট করা"
     }
   }
 
   const t = translations[language]
 
   const handleInputChange = (e) => {
+    const { name, value } = e.target
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     })
   }
 
-  const handleSubmit = (e) => {
+  const validateForm = () => {
+    const newErrors = {}
+    
+    if (!isValidEmail(formData.email)) {
+      newErrors.email = 'Please enter a valid email address'
+    }
+    if (!formData.password) {
+      newErrors.password = 'Password is required'
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Handle login logic here
-    console.log('Login attempt:', formData)
+    
+    if (!validateForm()) return
+    
+    setIsLoading(true)
+    setErrors({})
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
+
+      if (error) {
+        throw error
+      }
+
+      if (!data.user) {
+        throw new Error('Login successful, but no user data received.')
+      }
+
+      // Fetch the user's profile to get their role
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_type')
+        .eq('id', data.user.id)
+        .single()
+
+      if (profileError) {
+        throw profileError
+      }
+      
+      if (!profile || !profile.user_type) {
+        // This can happen if the trigger failed or if the user exists in auth but not profiles
+        setErrors({ general: 'Could not find a user profile. Please try signing up again or contact support.' })
+        await supabase.auth.signOut() // Log the user out to prevent a confusing state
+        setIsLoading(false)
+        return
+      }
+
+      const userType = profile.user_type
+      
+      // Redirect based on user type
+      switch (userType) {
+        case 'landlord':
+          navigate('/landlord')
+          break
+        case 'tenant':
+          navigate('/tenant')
+          break
+        case 'maintenance':
+          navigate('/maintenance')
+          break
+        default:
+          // Default redirect if user type is not set
+          navigate('/')
+      }
+    } catch (error) {
+      setErrors({ general: getErrorMessage(error) })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -112,6 +192,20 @@ const LoginPage = ({ language = 'en' }) => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Success Message */}
+              {successMessage && (
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                  {successMessage}
+                </div>
+              )}
+              
+              {/* Error Message */}
+              {errors.general && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {errors.general}
+                </div>
+              )}
+              
               {/* Email Field */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -126,6 +220,9 @@ const LoginPage = ({ language = 'en' }) => {
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/70 backdrop-blur-sm"
                   required
                 />
+                {errors.email && (
+                  <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                )}
               </div>
 
               {/* Password Field */}
@@ -151,20 +248,9 @@ const LoginPage = ({ language = 'en' }) => {
                     {showPassword ? t.hidePassword : t.showPassword}
                   </button>
                 </div>
-              </div>
-
-              {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-slate-600">{t.rememberMe}</span>
-                </label>
-                <button type="button" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                  {t.forgotPassword}
-                </button>
+                {errors.password && (
+                  <p className="text-red-500 text-xs mt-1">{errors.password}</p>
+                )}
               </div>
 
               {/* Login Button */}
@@ -172,9 +258,10 @@ const LoginPage = ({ language = 'en' }) => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-blue-500/25 transition-all duration-300 disabled:cursor-not-allowed"
               >
-                {t.loginButton}
+                {isLoading ? 'Signing In...' : t.loginButton}
               </motion.button>
 
               {/* Divider */}

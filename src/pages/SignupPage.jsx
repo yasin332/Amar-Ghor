@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { getErrorMessage, isValidEmail, isValidPassword } from '../lib/utils'
+import { supabase } from '../lib/supabaseClient'
 
 const SignupPage = ({ language = 'en' }) => {
   const [formData, setFormData] = useState({
@@ -16,6 +18,10 @@ const SignupPage = ({ language = 'en' }) => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [isLoading, setIsLoading] = useState(false)
+  
+  const navigate = useNavigate()
 
   const translations = {
     en: {
@@ -88,9 +94,63 @@ const SignupPage = ({ language = 'en' }) => {
     })
   }
 
-  const handleSubmit = (e) => {
+  const validateForm = () => {
+    const newErrors = {}
+    
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required'
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required'
+    if (!isValidEmail(formData.email)) newErrors.email = 'Please enter a valid email'
+    if (!formData.phone.trim()) newErrors.phone = 'Phone number is required'
+    if (!formData.userType) newErrors.userType = 'Please select your role'
+    if (!formData.area.trim()) newErrors.area = 'Area is required'
+    if (!isValidPassword(formData.password)) newErrors.password = 'Password must be at least 8 characters'
+    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match'
+    if (!formData.agreeToTerms) newErrors.agreeToTerms = 'You must agree to the terms and conditions'
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log('Signup attempt:', formData)
+    
+    if (!validateForm()) return
+    
+    setIsLoading(true)
+    setErrors({})
+
+    try {
+      const { user, error } = await supabase.auth.signUp(
+        {
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              user_type: formData.userType,
+              phone: formData.phone,
+              area: formData.area
+            }
+          }
+        }
+      )
+
+      if (error) {
+        throw error
+      }
+      
+      // Show success message and redirect
+      navigate('/login', { 
+        state: { 
+          message: 'Account created successfully! Please check your email to verify your account and sign in.' 
+        }
+      })
+    } catch (error) {
+      setErrors({ general: getErrorMessage(error) })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -139,6 +199,13 @@ const SignupPage = ({ language = 'en' }) => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Error Message */}
+              {errors.general && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {errors.general}
+                </div>
+              )}
+              
               {/* Name Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -352,9 +419,10 @@ const SignupPage = ({ language = 'en' }) => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-blue-500/25 transition-all duration-300 disabled:cursor-not-allowed"
               >
-                {t.signupButton}
+                {isLoading ? 'Creating Account...' : t.signupButton}
               </motion.button>
 
               {/* Login Link */}

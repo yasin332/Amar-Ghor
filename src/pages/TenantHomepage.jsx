@@ -1,8 +1,17 @@
-﻿import { useState } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { supabase } from '../lib/supabaseClient'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
 
 const TenantHomepage = ({ language = 'en' }) => {
   const [activeTab, setActiveTab] = useState('overview')
+  const [loading, setLoading] = useState(true)
+  const [userProfile, setUserProfile] = useState(null)
+  const [tenantData, setTenantData] = useState(null)
+  const [paymentHistory, setPaymentHistory] = useState([])
+  const [maintenanceRequests, setMaintenanceRequests] = useState([])
+  const [messages, setMessages] = useState([])
   
   // Modal states
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -34,6 +43,86 @@ const TenantHomepage = ({ language = 'en' }) => {
     type: 'general',
     message: ''
   })
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
+      // Fetch user's profile to get their name
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .single()
+      
+      if (profileError) console.error('Error fetching profile:', profileError)
+      else setUserProfile(profile)
+
+      // Fetch tenant details (will be an array)
+      const { data: tenantDetails, error: tenantError } = await supabase
+        .from('tenants')
+        .select(`
+          *,
+          properties (
+            address,
+            property_type,
+            bedrooms,
+            bathrooms,
+            owner_id,
+            profiles (
+              first_name,
+              last_name,
+              phone
+            ),
+            amenities
+          )
+        `)
+        .eq('email', user.email)
+      
+      if (tenantError) {
+        console.error('Error fetching tenant details:', tenantError)
+      } else if (tenantDetails && tenantDetails.length > 0) {
+        const tenant = tenantDetails[0] // Use the first tenant record
+        setTenantData(tenant)
+
+        // Fetch payment history for this tenant
+        const { data: payments, error: paymentsError } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('tenant_id', tenant.id)
+        
+        if (paymentsError) console.error('Error fetching payment history:', paymentsError)
+        else setPaymentHistory(payments)
+
+        // Fetch maintenance requests for this tenant
+        const { data: maintenance, error: maintenanceError } = await supabase
+          .from('maintenance_requests')
+          .select('*')
+          .eq('tenant_id', tenant.id)
+
+        if (maintenanceError) console.error('Error fetching maintenance requests:', maintenanceError)
+        else setMaintenanceRequests(maintenance)
+      }
+
+      // Fetch messages
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+      
+      if (messagesError) console.error('Error fetching messages:', messagesError)
+      else setMessages(messagesData)
+
+      setLoading(false)
+    }
+
+    fetchData()
+  }, [])
 
   const translations = {
     en: {
@@ -258,107 +347,40 @@ const TenantHomepage = ({ language = 'en' }) => {
 
   const t = translations[language]
 
-  // Sample tenant data
-  const tenantData = {
-    name: t.tenantName,
-    property: "House 45, Road 12, Dhanmondi",
-    landlord: "Karim Rahman",
-    landlordPhone: "01712345678",
-    monthlyRent: 15000,
-    nextPaymentDue: "Jan 1, 2025",
-    daysUntilDue: 5,
-    leaseStart: "Jan 1, 2024",
-    leaseEnd: "Dec 31, 2024",
-    securityDeposit: 30000,
-    propertyType: t.house,
-    bedrooms: 3,
-    bathrooms: 2,
-    totalPaidThisYear: 165000
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div>Loading...</div>
+      </div>
+    )
   }
 
-  const amenities = [
-    "24/7 Security", "Generator Backup", "Parking Space", "Garden", 
-    "Internet Ready", "Gas Connection", "Water Supply", "CCTV"
-  ]
+  const totalPaidThisYear = paymentHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
 
-  const paymentHistory = [
-    { id: 1, date: "Dec 1, 2024", amount: 15000, method: "Bank Transfer", status: "paid" },
-    { id: 2, date: "Nov 1, 2024", amount: 15000, method: "Cash", status: "paid" },
-    { id: 3, date: "Oct 1, 2024", amount: 15000, method: "Bank Transfer", status: "paid" },
-    { id: 4, date: "Sep 1, 2024", amount: 15000, method: "Mobile Banking", status: "paid" },
-    { id: 5, date: "Aug 1, 2024", amount: 15000, method: "Bank Transfer", status: "paid" },
-    { id: 6, date: "Jul 1, 2024", amount: 15000, method: "Cash", status: "paid" }
-  ]
-
-  const maintenanceRequests = [
-    { 
-      id: 1, 
-      issue: "Leaking faucet in kitchen", 
-      priority: "medium", 
-      date: "Dec 15, 2024", 
-      status: "inProgress",
-      description: "Kitchen sink faucet has been dripping for 3 days. Water waste is concerning."
-    },
-    { 
-      id: 2, 
-      issue: "Air conditioning not cooling", 
-      priority: "high", 
-      date: "Dec 10, 2024", 
-      status: "completed",
-      description: "AC in master bedroom stopped working. Need immediate repair due to heat."
-    },
-    { 
-      id: 3, 
-      issue: "Light bulb replacement needed", 
-      priority: "low", 
-      date: "Dec 5, 2024", 
-      status: "completed",
-      description: "Living room ceiling light bulb burnt out."
-    },
-    { 
-      id: 4, 
-      issue: "Window lock broken", 
-      priority: "high", 
-      date: "Nov 28, 2024", 
-      status: "completed",
-      description: "Security concern - bedroom window lock mechanism is broken."
-    }
-  ]
-
-  const messages = [
-    { 
-      id: 1, 
-      from: "Karim Rahman", 
-      to: t.tenantName, 
-      subject: "Monthly Rent Receipt - December", 
-      date: "Dec 16, 2024", 
-      message: "Dear Fatima, Thank you for your timely payment of December rent. Please find the receipt attached to this message. Have a great month ahead!"
-    },
-    { 
-      id: 2, 
-      from: t.tenantName, 
-      to: "Karim Rahman", 
-      subject: "Kitchen Faucet Issue Update", 
-      date: "Dec 15, 2024", 
-      message: "Dear Mr. Rahman, Just wanted to update you that the kitchen faucet is still leaking. When can we expect the plumber to come? The water wastage is quite significant now."
-    },
-    { 
-      id: 3, 
-      from: "Karim Rahman", 
-      to: t.tenantName, 
-      subject: "Maintenance Team Response", 
-      date: "Dec 14, 2024", 
-      message: "Hello Fatima, I've contacted our maintenance team regarding the faucet issue. They will visit tomorrow between 10 AM - 2 PM. Please ensure someone is available."
-    },
-    { 
-      id: 4, 
-      from: "Karim Rahman", 
-      to: t.tenantName, 
-      subject: "Property Inspection Notice", 
-      date: "Dec 1, 2024", 
-      message: "Dear Tenant, This is to inform you about our quarterly property inspection scheduled for December 20th, 2024. The inspection will be conducted between 2-4 PM. Please let me know if this time works for you."
-    }
-  ]
+  // If the user is a tenant but not yet assigned to a property
+  if (!tenantData) {
+    const welcomeName = userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : t.tenantName
+    return (
+      <div className="min-h-screen relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"></div>
+        <div className="relative z-10 min-h-screen flex items-center justify-center text-center px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-12"
+          >
+            <h1 className="text-4xl font-bold text-slate-800 mb-4">
+              {t.welcome}, {welcomeName}!
+            </h1>
+            <p className="text-xl text-slate-600 max-w-lg mx-auto">
+              Your account is ready. Please wait for a property owner to add you as a tenant to access your dashboard.
+            </p>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -376,26 +398,61 @@ const TenantHomepage = ({ language = 'en' }) => {
   }
 
   // Handler functions
-  const handlePayment = (e) => {
+  const handlePayment = async (e) => {
     e.preventDefault()
-    // Simulate payment processing
-    setTimeout(() => {
-      alert(t.paymentSuccessful)
-      setShowPaymentModal(false)
-      setPaymentForm({ amount: 15000, method: 'bankTransfer', reference: '' })
-      // Update payment history (in real app, this would be handled by backend)
-    }, 1000)
+    
+    const { data, error } = await supabase
+      .from('payments')
+      .insert([
+        {
+          tenant_id: tenantData.id,
+          landlord_id: tenantData.properties?.owner_id,
+          amount: paymentForm.amount,
+          payment_date: new Date(),
+          status: 'paid' // Assuming payment is successful
+        }
+      ])
+      .select()
+
+    if (error) {
+      console.error('Error processing payment:', error)
+      alert('Payment failed.')
+      return
+    }
+
+    setPaymentHistory(prev => [...prev, ...data])
+    alert(t.paymentSuccessful)
+    setShowPaymentModal(false)
+    setPaymentForm({ amount: tenantData.rent_amount || 0, method: 'bankTransfer', reference: '' })
   }
 
-  const handleMaintenanceRequest = (e) => {
+  const handleMaintenanceRequest = async (e) => {
     e.preventDefault()
-    // Simulate request submission
-    setTimeout(() => {
-      alert(t.requestSubmitted)
-      setShowMaintenanceModal(false)
-      setMaintenanceForm({ issue: '', description: '', priority: 'medium', location: '' })
-      // Add to maintenance requests (in real app, this would be handled by backend)
-    }, 500)
+
+    const { data, error } = await supabase
+      .from('maintenance_requests')
+      .insert([
+        {
+          property_id: tenantData.property_id,
+          tenant_id: tenantData.id,
+          issue: maintenanceForm.issue,
+          description: maintenanceForm.description,
+          priority: maintenanceForm.priority,
+          status: 'submitted'
+        }
+      ])
+      .select()
+
+    if (error) {
+      console.error('Error submitting maintenance request:', error)
+      alert('Failed to submit request.')
+      return
+    }
+
+    setMaintenanceRequests(prev => [...prev, ...data])
+    alert(t.requestSubmitted)
+    setShowMaintenanceModal(false)
+    setMaintenanceForm({ issue: '', description: '', priority: 'medium', location: '' })
   }
 
   const handleSendMessage = (e) => {
@@ -417,6 +474,40 @@ const TenantHomepage = ({ language = 'en' }) => {
       setShowContactModal(false)
       setContactForm({ type: 'general', message: '' })
     }, 500)
+  }
+
+  const handleDownloadLease = () => {
+    const doc = new jsPDF()
+
+    // Add title
+    doc.setFontSize(22)
+    doc.text("Lease Agreement", 14, 22)
+
+    // Add lease details
+    doc.setFontSize(12)
+    doc.text(`Property: ${tenantData.properties?.address}`, 14, 40)
+    doc.text(`Tenant: ${tenantData.name}`, 14, 48)
+    doc.text(`Landlord: ${tenantData.properties?.profiles?.first_name} ${tenantData.properties?.profiles?.last_name}`, 14, 56)
+    doc.text(`Lease Period: ${tenantData.lease_start_date} to ${tenantData.lease_end_date}`, 14, 64)
+    doc.text(`Monthly Rent: ${t.taka}${(tenantData.rent_amount || 0).toLocaleString()}`, 14, 72)
+    doc.text(`Security Deposit: ${t.taka}${(tenantData.security_deposit || 0).toLocaleString()}`, 14, 80)
+
+    // Add terms and conditions
+    doc.autoTable({
+      startY: 90,
+      head: [['Terms & Conditions']],
+      body: [
+        ['Rent is due on the 1st of each month'],
+        ['Late payment fee of 5% applies after 5 days'],
+        ['Property must be maintained in good condition'],
+        ['No subletting without written permission'],
+        ['24-hour notice required for landlord visits'],
+        ['Security deposit refundable upon satisfactory inspection']
+      ],
+      theme: 'grid'
+    })
+
+    doc.save('lease_agreement.pdf')
   }
 
   const handleViewLease = () => {
@@ -453,24 +544,24 @@ const TenantHomepage = ({ language = 'en' }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title={t.currentRent} 
-          value={`${t.taka}${tenantData.monthlyRent.toLocaleString()}`} 
+          value={`${t.taka}${(tenantData.rent_amount || 0).toLocaleString()}`} 
           icon="💰" 
         />
         <StatCard 
           title={t.nextPayment} 
-          value={`${t.dueIn} ${tenantData.daysUntilDue} ${t.days}`} 
+          value={`Due Next Month`} 
           icon="📅"
           actionButton={t.payNow}
           onClick={() => setShowPaymentModal(true)}
         />
         <StatCard 
           title={t.totalPaid} 
-          value={`${t.taka}${tenantData.totalPaidThisYear.toLocaleString()}`} 
+          value={`${t.taka}${totalPaidThisYear.toLocaleString()}`} 
           icon="📊" 
         />
         <StatCard 
           title={t.activeRequests} 
-          value="1 pending" 
+          value={`${maintenanceRequests.filter(r => r.status !== 'completed').length} pending`} 
           icon="🔧" 
         />
       </div>
@@ -570,44 +661,44 @@ const TenantHomepage = ({ language = 'en' }) => {
           <div className="space-y-4">
             <div className="p-4 bg-slate-50 rounded-lg">
               <label className="text-sm font-medium text-slate-600">{t.address}</label>
-              <p className="text-slate-800 font-medium text-lg">{tenantData.property}</p>
+              <p className="text-slate-800 font-medium text-lg">{tenantData.properties?.address}</p>
             </div>
             <div className="p-4 bg-slate-50 rounded-lg">
               <label className="text-sm font-medium text-slate-600">{t.landlord}</label>
-              <p className="text-slate-800 font-medium">{tenantData.landlord}</p>
-              <p className="text-slate-600 text-sm">{tenantData.landlordPhone}</p>
+              <p className="text-slate-800 font-medium">{`${tenantData.properties?.profiles?.first_name || ''} ${tenantData.properties?.profiles?.last_name || ''}`}</p>
+              <p className="text-slate-600 text-sm">{tenantData.properties?.profiles?.phone}</p>
             </div>
             <div className="p-4 bg-slate-50 rounded-lg">
               <label className="text-sm font-medium text-slate-600">{t.propertyType}</label>
-              <p className="text-slate-800 font-medium">{tenantData.propertyType}</p>
+              <p className="text-slate-800 font-medium">{tenantData.properties?.property_type}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-slate-50 rounded-lg">
                 <label className="text-sm font-medium text-slate-600">{t.bedrooms}</label>
-                <p className="text-slate-800 font-medium text-xl">{tenantData.bedrooms}</p>
+                <p className="text-slate-800 font-medium text-xl">{tenantData.properties?.bedrooms}</p>
               </div>
               <div className="p-4 bg-slate-50 rounded-lg">
                 <label className="text-sm font-medium text-slate-600">{t.bathrooms}</label>
-                <p className="text-slate-800 font-medium text-xl">{tenantData.bathrooms}</p>
+                <p className="text-slate-800 font-medium text-xl">{tenantData.properties?.bathrooms}</p>
               </div>
             </div>
           </div>
           <div className="space-y-4">
             <div className="p-4 bg-blue-50 rounded-lg">
               <label className="text-sm font-medium text-slate-600">{t.leaseStart}</label>
-              <p className="text-slate-800 font-medium">{tenantData.leaseStart}</p>
+              <p className="text-slate-800 font-medium">{tenantData.lease_start_date}</p>
             </div>
             <div className="p-4 bg-blue-50 rounded-lg">
               <label className="text-sm font-medium text-slate-600">{t.leaseEnd}</label>
-              <p className="text-slate-800 font-medium">{tenantData.leaseEnd}</p>
+              <p className="text-slate-800 font-medium">{tenantData.lease_end_date}</p>
             </div>
             <div className="p-4 bg-green-50 rounded-lg">
               <label className="text-sm font-medium text-slate-600">{t.monthlyRent}</label>
-              <p className="text-slate-800 font-bold text-xl">{t.taka}{tenantData.monthlyRent.toLocaleString()}</p>
+              <p className="text-slate-800 font-bold text-xl">{t.taka}{(tenantData.rent_amount || 0).toLocaleString()}</p>
             </div>
             <div className="p-4 bg-yellow-50 rounded-lg">
               <label className="text-sm font-medium text-slate-600">{t.securityDeposit}</label>
-              <p className="text-slate-800 font-medium">{t.taka}{tenantData.securityDeposit.toLocaleString()}</p>
+              <p className="text-slate-800 font-medium">{t.taka}{(tenantData.security_deposit || 0).toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -617,7 +708,7 @@ const TenantHomepage = ({ language = 'en' }) => {
       <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-slate-200">
         <h4 className="text-lg font-semibold text-slate-800 mb-4">{t.amenities}</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {amenities.map((amenity, index) => (
+          {(tenantData.properties?.amenities || []).map((amenity, index) => (
             <div key={index} className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <span className="text-blue-600">✓</span>
               <span className="text-sm font-medium text-slate-700">{amenity}</span>
@@ -656,12 +747,12 @@ const TenantHomepage = ({ language = 'en' }) => {
           <tbody>
             {paymentHistory.map((payment) => (
               <tr key={payment.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                <td className="py-3 px-4 text-slate-600">{payment.date}</td>
+                <td className="py-3 px-4 text-slate-600">{payment.payment_date}</td>
                 <td className="py-3 px-4 text-slate-800 font-semibold">{t.taka}{payment.amount.toLocaleString()}</td>
-                <td className="py-3 px-4 text-slate-600">{payment.method}</td>
+                <td className="py-3 px-4 text-slate-600">{payment.payment_method}</td>
                 <td className="py-3 px-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
-                    {t.paid}
+                    {payment.status === 'paid' ? t.paid : payment.status === 'pending' ? t.pending : t.overdue}
                   </span>
                 </td>
               </tr>
@@ -670,7 +761,7 @@ const TenantHomepage = ({ language = 'en' }) => {
         </table>
       </div>
       <div className="mt-6 p-4 bg-green-50 rounded-lg">
-        <p className="text-sm text-slate-600">{t.totalPaid}: <span className="font-bold text-green-700">{t.taka}{tenantData.totalPaidThisYear.toLocaleString()}</span></p>
+        <p className="text-sm text-slate-600">{t.totalPaid}: <span className="font-bold text-green-700">{t.taka}{tenantData.total_paid_this_year.toLocaleString()}</span></p>
       </div>
     </motion.div>
   )
@@ -723,7 +814,7 @@ const TenantHomepage = ({ language = 'en' }) => {
               </div>
               <div>
                 <span className="text-slate-500">{t.requestDate}:</span>
-                <span className="ml-2 text-slate-700">{request.date}</span>
+                <span className="ml-2 text-slate-700">{request.request_date}</span>
               </div>
               <div>
                 <span className="text-slate-500">ID:</span>
@@ -1032,12 +1123,12 @@ const TenantHomepage = ({ language = 'en' }) => {
         <div className="bg-slate-50 p-4 rounded-lg">
           <h4 className="font-semibold text-slate-800 mb-2">{t.leaseTerms}</h4>
           <div className="space-y-2 text-sm text-slate-700">
-            <p><strong>Property:</strong> {tenantData.property}</p>
+            <p><strong>Property:</strong> {tenantData.properties?.address}</p>
             <p><strong>Tenant:</strong> {tenantData.name}</p>
-            <p><strong>Landlord:</strong> {tenantData.landlord}</p>
-            <p><strong>Lease Period:</strong> {tenantData.leaseStart} - {tenantData.leaseEnd}</p>
-            <p><strong>Monthly Rent:</strong> {t.taka}{tenantData.monthlyRent.toLocaleString()}</p>
-            <p><strong>Security Deposit:</strong> {t.taka}{tenantData.securityDeposit.toLocaleString()}</p>
+            <p><strong>Landlord:</strong> {`${tenantData.properties?.profiles?.first_name || ''} ${tenantData.properties?.profiles?.last_name || ''}`}</p>
+            <p><strong>Lease Period:</strong> {tenantData.lease_start_date} - {tenantData.lease_end_date}</p>
+            <p><strong>Monthly Rent:</strong> {t.taka}{(tenantData.rent_amount || 0).toLocaleString()}</p>
+            <p><strong>Security Deposit:</strong> {t.taka}{(tenantData.security_deposit || 0).toLocaleString()}</p>
           </div>
         </div>
         <div className="bg-blue-50 p-4 rounded-lg">
@@ -1059,7 +1150,7 @@ const TenantHomepage = ({ language = 'en' }) => {
             {t.cancel}
           </button>
           <button
-            onClick={() => alert('Download feature would be implemented here')}
+            onClick={handleDownloadLease}
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             {t.downloadLease}
@@ -1085,7 +1176,7 @@ const TenantHomepage = ({ language = 'en' }) => {
             className="mb-8"
           >
             <h1 className="text-3xl font-bold text-slate-800 mb-2">
-              {t.welcome}, {t.tenantName}
+              {t.welcome}, {tenantData.name}
             </h1>
             <p className="text-slate-600">{t.subtitle}</p>
           </motion.div>

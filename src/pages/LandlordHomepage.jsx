@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabaseClient'
 
 const LandlordHomepage = ({ language = 'en' }) => {
   const [activeTab, setActiveTab] = useState('overview')
@@ -57,11 +58,78 @@ const LandlordHomepage = ({ language = 'en' }) => {
     scheduledTime: ''
   })
   const [dragOver, setDragOver] = useState(false)
+  const [showSuppliesModal, setShowSuppliesModal] = useState(false)
+  const [properties, setProperties] = useState([])
+  const [tenants, setTenants] = useState([])
+  const [payments, setPayments] = useState([])
+  const [maintenanceRequests, setMaintenanceRequests] = useState([])
+  const [maintenanceTeams, setMaintenanceTeams] = useState([])
+  const [userProfile, setUserProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
+      // Fetch user's profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      
+      if (profileError) console.error('Error fetching profile:', profileError)
+      else setUserProfile(profileData)
+
+      const { data: propertiesData, error: propertiesError } = await supabase
+        .from('properties')
+        .select('*')
+      
+      if (propertiesError) console.error('Error fetching properties:', propertiesError)
+      else setProperties(propertiesData)
+
+      const { data: tenantsData, error: tenantsError } = await supabase
+        .from('tenants')
+        .select('*')
+
+      if (tenantsError) console.error('Error fetching tenants:', tenantsError)
+      else setTenants(tenantsData)
+
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payments')
+        .select('*')
+
+      if (paymentsError) console.error('Error fetching payments:', paymentsError)
+      else setPayments(paymentsData)
+
+      const { data: maintenanceData, error: maintenanceError } = await supabase
+        .from('maintenance_requests')
+        .select('*')
+
+      if (maintenanceError) console.error('Error fetching maintenance requests:', maintenanceError)
+      else setMaintenanceRequests(maintenanceData)
+
+      const { data: teamsData, error: teamsError } = await supabase
+        .from('maintenance_teams')
+        .select('*')
+      
+      if (teamsError) console.error('Error fetching maintenance teams:', teamsError)
+      else setMaintenanceTeams(teamsData)
+
+      setLoading(false)
+    }
+
+    fetchData()
+  }, [])
 
   const translations = {
     en: {
       welcome: "Welcome back",
-      landlordName: "Karim Rahman", // Sample name
       subtitle: "Manage your properties with confidence",
       quickActions: "Quick Actions",
       addProperty: "Add New Property",
@@ -319,7 +387,6 @@ const LandlordHomepage = ({ language = 'en' }) => {
     },
     bn: {
       welcome: "স্বাগতম",
-      landlordName: "করিম রহমান",
       subtitle: "আত্মবিশ্বাসের সাথে আপনার সম্পত্তি পরিচালনা করুন",
       quickActions: "দ্রুত কাজ",
       addProperty: "নতুন সম্পত্তি যোগ করুন",
@@ -579,179 +646,17 @@ const LandlordHomepage = ({ language = 'en' }) => {
 
   const t = translations[language]
 
-  // Sample data (in real app, this would come from API)
+  // Calculate stats from live data
+  const monthlyIncome = tenants.reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0)
   const dashboardStats = {
-    totalProperties: 5,
-    totalTenants: 4,
-    monthlyIncome: 45000,
-    pendingPayments: 2
-  }
-
-  const properties = [
-    { 
-      id: 1, 
-      address: "House 45, Road 12, Dhanmondi", 
-      tenant: "Fatima Khan", 
-      rent: 15000, 
-      status: "occupied",
-      type: "house",
-      bedrooms: 3,
-      bathrooms: 2,
-      description: "Beautiful 3-bedroom house in prime Dhanmondi location with garden and parking",
-      amenities: ["parking", "garden", "security", "internet"],
-      leaseStart: "2024-01-01",
-      leaseEnd: "2024-12-31",
-      securityDeposit: 45000,
-      totalRentCollected: 165000,
-      occupancyRate: 95
-    },
-    { 
-      id: 2, 
-      address: "Flat 3B, Gulshan Avenue", 
-      tenant: "Ahmed Ali", 
-      rent: 12000, 
-      status: "occupied",
-      type: "flat",
-      bedrooms: 2,
-      bathrooms: 2,
-      description: "Modern 2-bedroom flat in Gulshan with elevator and security",
-      amenities: ["elevator", "security", "airConditioning", "internet"],
-      leaseStart: "2024-03-01",
-      leaseEnd: "2025-02-28",
-      securityDeposit: 36000,
-      totalRentCollected: 120000,
-      occupancyRate: 90
-    },
-    { 
-      id: 3, 
-      address: "House 78, Uttara Sector 7", 
-      tenant: "Nasir Uddin", 
-      rent: 10000, 
-      status: "occupied",
-      type: "house",
-      bedrooms: 2,
-      bathrooms: 1,
-      description: "Cozy 2-bedroom house in Uttara with garden space",
-      amenities: ["garden", "parking", "internet"],
-      leaseStart: "2023-06-01",
-      leaseEnd: "2024-05-31",
-      securityDeposit: 30000,
-      totalRentCollected: 190000,
-      occupancyRate: 85
-    },
-    { 
-      id: 4, 
-      address: "Flat 2A, Bashundhara R/A", 
-      tenant: "Rahima Begum", 
-      rent: 8000, 
-      status: "occupied",
-      type: "flat",
-      bedrooms: 1,
-      bathrooms: 1,
-      description: "Compact 1-bedroom flat in Bashundhara residential area",
-      amenities: ["security", "elevator", "internet"],
-      leaseStart: "2024-02-01",
-      leaseEnd: "2025-01-31",
-      securityDeposit: 24000,
-      totalRentCollected: 88000,
-      occupancyRate: 92
-    },
-    { 
-      id: 5, 
-      address: "House 23, Mirpur DOHS", 
-      tenant: "", 
-      rent: 9000, 
-      status: "vacant",
-      type: "house",
-      bedrooms: 2,
-      bathrooms: 1,
-      description: "Well-maintained 2-bedroom house in DOHS area with parking",
-      amenities: ["parking", "security", "garden"],
-      leaseStart: "",
-      leaseEnd: "",
-      securityDeposit: 0,
-      totalRentCollected: 162000,
-      occupancyRate: 75
-    }
-  ]
-
-  const tenants = [
-    { id: 1, name: "Fatima Khan", phone: "01712345678", property: "Dhanmondi", rent: 15000, status: "paid" },
-    { id: 2, name: "Ahmed Ali", phone: "01798765432", property: "Gulshan", rent: 12000, status: "pending" },
-    { id: 3, name: "Nasir Uddin", phone: "01634567890", property: "Uttara", rent: 10000, status: "paid" },
-    { id: 4, name: "Rahima Begum", phone: "01856789012", property: "Bashundhara", rent: 8000, status: "overdue" }
-  ]
-
-  const payments = [
-    { id: 1, date: "Dec 1, 2024", tenant: "Fatima Khan", property: "Dhanmondi", amount: 15000, status: "paid" },
-    { id: 2, date: "Dec 1, 2024", tenant: "Ahmed Ali", property: "Gulshan", amount: 12000, status: "pending" },
-    { id: 3, date: "Nov 1, 2024", tenant: "Nasir Uddin", property: "Uttara", amount: 10000, status: "paid" },
-    { id: 4, date: "Nov 1, 2024", tenant: "Rahima Begum", property: "Bashundhara", amount: 8000, status: "overdue" }
-  ]
-
-  const maintenanceRequests = [
-    { id: 1, tenant: "Ahmed Ali", property: "Gulshan", issue: "Leaking faucet in kitchen", priority: "medium", date: "Dec 3, 2024", status: "pending" },
-    { id: 2, tenant: "Rahima Begum", property: "Bashundhara", issue: "Air conditioner not working", priority: "high", date: "Dec 2, 2024", status: "pending" },
-    { id: 3, tenant: "Nasir Uddin", property: "Uttara", issue: "Light bulb replacement needed", priority: "low", date: "Dec 1, 2024", status: "pending" }
-  ]
-
-  // Maintenance Teams Data
-  const maintenanceTeams = {
-    electrical: {
-      id: 'electrical',
-      name: t.electricalTeam,
-      leader: t.electricalTeamLeader,
-      phone: t.electricalTeamPhone,
-      specialization: t.electricalSpecialization,
-      availability: 'available',
-      costPerHour: 500,
-      icon: '⚡'
-    },
-    plumbing: {
-      id: 'plumbing', 
-      name: t.plumbingTeam,
-      leader: t.plumbingTeamLeader,
-      phone: t.plumbingTeamPhone,
-      specialization: t.plumbingSpecialization,
-      availability: 'available',
-      costPerHour: 400,
-      icon: '🔧'
-    },
-    hardware: {
-      id: 'hardware',
-      name: t.hardwareTeam,
-      leader: t.hardwareTeamLeader,
-      phone: t.hardwareTeamPhone,
-      specialization: t.hardwareSpecialization,
-      availability: 'busy',
-      costPerHour: 350,
-      icon: '🔨'
-    },
-    hvac: {
-      id: 'hvac',
-      name: t.hvacTeam,
-      leader: t.hvacTeamLeader,
-      phone: t.hvacTeamPhone,
-      specialization: t.hvacSpecialization,
-      availability: 'available',
-      costPerHour: 600,
-      icon: '❄️'
-    },
-    general: {
-      id: 'general',
-      name: t.generalMaintenance,
-      leader: t.generalTeamLeader,
-      phone: t.generalTeamPhone,
-      specialization: t.generalSpecialization,
-      availability: 'available',
-      costPerHour: 300,
-      icon: '🛠️'
-    }
+    totalProperties: properties.length,
+    totalTenants: tenants.length,
+    monthlyIncome: monthlyIncome,
+    pendingPayments: payments.filter(p => p.status === 'pending').length
   }
 
   // Get available properties for tenant assignment
-  const availableProperties = properties.filter(property => property.status === 'vacant')
-  const allProperties = properties // For showing all properties including occupied ones
+  const availableProperties = properties.filter(property => !tenants.some(t => t.property_id === property.id))
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -765,6 +670,14 @@ const LandlordHomepage = ({ language = 'en' }) => {
       case 'low': return 'text-blue-600 bg-blue-100'
       default: return 'text-gray-600 bg-gray-100'
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div>Loading...</div>
+      </div>
+    )
   }
 
   const handleAddProperty = () => {
@@ -1051,64 +964,99 @@ const LandlordHomepage = ({ language = 'en' }) => {
     }))
   }
 
-  const handleSaveProperty = () => {
+  const handleSaveProperty = async () => {
     // Validation
     if (!newProperty.address || !newProperty.rent || !newProperty.bedrooms || !newProperty.bathrooms) {
       alert(t.required)
       return
     }
 
-    // Check if we're editing an existing property
-    const isEditing = selectedProperty && selectedProperty.address === newProperty.address
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      alert('You must be logged in to add a property.')
+      return
+    }
 
     // In a real app, this would make an API call
-    console.log(isEditing ? 'Updating property:' : 'Saving new property:', newProperty)
+    const { data, error } = await supabase
+      .from('properties')
+      .insert([
+        { 
+          owner_id: user.id,
+          address: newProperty.address,
+          property_type: newProperty.propertyType,
+          bedrooms: newProperty.bedrooms,
+          bathrooms: newProperty.bathrooms,
+          rent: newProperty.rent,
+          description: newProperty.description,
+          amenities: newProperty.amenities,
+          photos: newProperty.photos.map(p => p.name) // Just storing names for now
+        }
+      ])
+      .select()
+
+    if (error) {
+      console.error('Error adding property:', error)
+      alert('Failed to add property.')
+      return
+    }
     
+    // Add the new property to the local state
+    setProperties(prev => [...prev, ...data])
+
     // Close modal and reset form
     handleCloseModal()
     
     // Show success message (you could add a toast notification here)
-    alert(isEditing ? 'Property updated successfully!' : 'Property added successfully!')
-    
-    // If we were editing, close the property details modal too
-    if (isEditing) {
-      setSelectedProperty(null)
-    }
+    alert('Property added successfully!')
   }
 
-  const handleSaveTenant = () => {
+  const handleSaveTenant = async () => {
     // Validation
     if (!newTenant.name || !newTenant.phone || !newTenant.selectedProperty || !newTenant.leaseStartDate) {
       alert(t.required)
       return
     }
 
-    // Email validation
-    if (newTenant.email && !/\S+@\S+\.\S+/.test(newTenant.email)) {
-      alert('Please enter a valid email address')
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      alert('You must be logged in to add a tenant.')
       return
     }
 
-    // Phone validation (basic)
-    if (!/^[0-9+\-\s()]+$/.test(newTenant.phone)) {
-      alert('Please enter a valid phone number')
+    const { data, error } = await supabase
+      .from('tenants')
+      .insert([
+        { 
+          landlord_id: user.id,
+          property_id: newTenant.selectedProperty,
+          name: newTenant.name,
+          phone: newTenant.phone,
+          email: newTenant.email,
+          national_id: newTenant.nationalId,
+          lease_start_date: newTenant.leaseStartDate,
+          lease_end_date: newTenant.leaseEndDate,
+          rent_amount: newTenant.rentAmount,
+          security_deposit: newTenant.securityDeposit,
+        }
+      ])
+      .select()
+      
+    if (error) {
+      console.error('Error adding tenant:', error)
+      alert('Failed to add tenant.')
       return
     }
-
-    // In a real app, this would make an API call
-    console.log('Saving tenant:', newTenant)
+    
+    setTenants(prev => [...prev, ...data])
     
     // Close modal and reset form
     handleCloseTenantModal()
     
     // Show success message (you could add a toast notification here)
     alert('Tenant added successfully!')
-    
-    // If we came from property details, close that modal too and refresh
-    if (selectedProperty && selectedProperty.id.toString() === newTenant.selectedProperty) {
-      setSelectedProperty(null)
-      setShowPropertyDetailsModal(false)
-    }
   }
 
   const getTemplateMessage = (type) => {
@@ -1307,7 +1255,7 @@ const LandlordHomepage = ({ language = 'en' }) => {
         </div>
       </motion.div>
 
-      {/* Recent Activity */}
+      {/* Recent Activity - Placeholder, as we don't have a dedicated activity table */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1315,29 +1263,7 @@ const LandlordHomepage = ({ language = 'en' }) => {
         className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-slate-200"
       >
         <h3 className="text-lg font-semibold text-slate-800 mb-4">{t.recentActivity}</h3>
-        <div className="space-y-4">
-          <div className="flex items-center gap-4 p-3 bg-green-50 rounded-lg">
-            <span className="text-green-600">✅</span>
-            <div>
-              <p className="text-sm font-medium text-slate-800">Payment received from Fatima Khan</p>
-              <p className="text-xs text-slate-600">Dec 1, 2024 - {t.taka}15,000</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 p-3 bg-yellow-50 rounded-lg">
-            <span className="text-yellow-600">🔧</span>
-            <div>
-              <p className="text-sm font-medium text-slate-800">New maintenance request from Ahmed Ali</p>
-              <p className="text-xs text-slate-600">Dec 3, 2024 - Leaking faucet</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 p-3 bg-red-50 rounded-lg">
-            <span className="text-red-600">⏰</span>
-            <div>
-              <p className="text-sm font-medium text-slate-800">Rent overdue from Rahima Begum</p>
-              <p className="text-xs text-slate-600">Nov 1, 2024 - {t.taka}8,000</p>
-            </div>
-          </div>
-        </div>
+        <p className="text-slate-500 text-sm">Recent activity feed will be implemented here.</p>
       </motion.div>
     </div>
   )
@@ -1364,10 +1290,10 @@ const LandlordHomepage = ({ language = 'en' }) => {
             {properties.map((property) => (
               <tr key={property.id} className="border-b border-slate-100 hover:bg-slate-50">
                 <td className="py-3 px-4 text-slate-800">{property.address}</td>
-                <td className="py-3 px-4 text-slate-600">{property.tenant || '-'}</td>
+                <td className="py-3 px-4 text-slate-600">{property.tenant_name || '-'}</td>
                 <td className="py-3 px-4 text-slate-800">{t.taka}{property.rent.toLocaleString()}</td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(property.status)}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(property.status || 'vacant')}`}>
                     {property.status === 'occupied' ? t.occupied : t.vacant}
                   </span>
                 </td>
@@ -1535,7 +1461,7 @@ const LandlordHomepage = ({ language = 'en' }) => {
             className="mb-8"
           >
             <h1 className="text-3xl font-bold text-slate-800 mb-2">
-              {t.welcome}, {t.landlordName}
+              {t.welcome}, {userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : ''}
             </h1>
             <p className="text-slate-600">{t.subtitle}</p>
           </motion.div>
@@ -1728,81 +1654,81 @@ const LandlordHomepage = ({ language = 'en' }) => {
                       </span>
                     </label>
                   ))}
-                                 </div>
-               </div>
+                </div>
+              </div>
 
-               {/* Property Photos */}
-               <div>
-                 <label className="block text-sm font-medium text-slate-700 mb-3">
-                   {t.propertyPhotos}
-                 </label>
-                 
-                 {/* Photo Upload Area */}
-                 <div
-                   onDragOver={handleDragOver}
-                   onDragLeave={handleDragLeave}
-                   onDrop={handleDrop}
-                   className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
-                     dragOver 
-                       ? 'border-blue-400 bg-blue-50' 
-                       : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'
-                   }`}
-                   onClick={() => document.getElementById('photo-input').click()}
-                 >
-                   <input
-                     id="photo-input"
-                     type="file"
-                     multiple
-                     accept="image/*"
-                     onChange={(e) => handlePhotoSelect(e.target.files)}
-                     className="hidden"
-                   />
-                   
-                   <div className="flex flex-col items-center space-y-2">
-                     <svg className="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                     </svg>
-                     <p className="text-slate-600 font-medium">{t.dragDropPhotos}</p>
-                     <p className="text-xs text-slate-500">{t.supportedFormats}</p>
-                     <p className="text-xs text-slate-500">
-                       {newProperty.photos.length}/10 {t.propertyPhotos.toLowerCase()}
-                     </p>
-                   </div>
-                 </div>
+              {/* Property Photos */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  {t.propertyPhotos}
+                </label>
+                
+                {/* Photo Upload Area */}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
+                    dragOver 
+                      ? 'border-blue-400 bg-blue-50' 
+                      : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'
+                  }`}
+                  onClick={() => document.getElementById('photo-input').click()}
+                >
+                  <input
+                    id="photo-input"
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => handlePhotoSelect(e.target.files)}
+                    className="hidden"
+                  />
+                  
+                  <div className="flex flex-col items-center space-y-2">
+                    <svg className="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-slate-600 font-medium">{t.dragDropPhotos}</p>
+                    <p className="text-xs text-slate-500">{t.supportedFormats}</p>
+                    <p className="text-xs text-slate-500">
+                      {newProperty.photos.length}/10 {t.propertyPhotos.toLowerCase()}
+                    </p>
+                  </div>
+                </div>
 
-                 {/* Photo Previews */}
-                 {newProperty.photos.length > 0 && (
-                   <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                     {newProperty.photos.map((photo) => (
-                       <div key={photo.id} className="relative group">
-                         <div className="aspect-square rounded-lg overflow-hidden bg-slate-100">
-                           <img
-                             src={photo.preview}
-                             alt={photo.name}
-                             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                           />
-                         </div>
-                         <button
-                           onClick={(e) => {
-                             e.stopPropagation()
-                             handlePhotoRemove(photo.id)
-                           }}
-                           className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transition-colors"
-                           title={t.removePhoto}
-                         >
-                           ×
-                         </button>
-                         <p className="mt-1 text-xs text-slate-600 truncate" title={photo.name}>
-                           {photo.name}
-                         </p>
-                       </div>
-                     ))}
-                   </div>
-                 )}
-               </div>
-             </div>
+                {/* Photo Previews */}
+                {newProperty.photos.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {newProperty.photos.map((photo) => (
+                      <div key={photo.id} className="relative group">
+                        <div className="aspect-square rounded-lg overflow-hidden bg-slate-100">
+                          <img
+                            src={photo.preview}
+                            alt={photo.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handlePhotoRemove(photo.id)
+                          }}
+                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transition-colors"
+                          title={t.removePhoto}
+                        >
+                          ×
+                        </button>
+                        <p className="mt-1 text-xs text-slate-600 truncate" title={photo.name}>
+                          {photo.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
-             {/* Modal Footer */}
+            {/* Modal Footer */}
             <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-xl">
               <div className="flex justify-end space-x-3">
                 <button
@@ -1819,1131 +1745,933 @@ const LandlordHomepage = ({ language = 'en' }) => {
                 </button>
               </div>
             </div>
-                     </motion.div>
-         </div>
-       )}
+          </motion.div>
+        </div>
+      )}
 
-       {/* Add Tenant Modal */}
-       {showAddTenantModal && (
-         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-           <motion.div
-             initial={{ opacity: 0, scale: 0.95 }}
-             animate={{ opacity: 1, scale: 1 }}
-             exit={{ opacity: 0, scale: 0.95 }}
-             className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
-           >
-             {/* Modal Header */}
-             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-xl">
-               <div className="flex items-center justify-between">
-                 <h2 className="text-xl font-semibold text-slate-800">{t.addTenantTitle}</h2>
-                 <button
-                   onClick={handleCloseTenantModal}
-                   className="text-slate-400 hover:text-slate-600 transition-colors"
-                 >
-                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                   </svg>
-                 </button>
-               </div>
-             </div>
+      {/* Add Tenant Modal */}
+      {showAddTenantModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-slate-800">{t.addTenantTitle}</h2>
+                <button
+                  onClick={handleCloseTenantModal}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-             {/* Modal Content */}
-             <div className="p-6 space-y-8">
-               {/* Personal Information Section */}
-               <div>
-                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                   <span className="text-blue-600 mr-2">👤</span>
-                   {t.personalInformation}
-                 </h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                       {t.tenantName} <span className="text-red-500">*</span>
-                     </label>
-                     <input
-                       type="text"
-                       value={newTenant.name}
-                       onChange={(e) => handleTenantInputChange('name', e.target.value)}
-                       placeholder={t.namePlaceholder}
-                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                       {t.tenantPhone} <span className="text-red-500">*</span>
-                     </label>
-                     <input
-                       type="tel"
-                       value={newTenant.phone}
-                       onChange={(e) => handleTenantInputChange('phone', e.target.value)}
-                       placeholder={t.phonePlaceholder}
-                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                       {t.tenantEmail}
-                     </label>
-                     <input
-                       type="email"
-                       value={newTenant.email}
-                       onChange={(e) => handleTenantInputChange('email', e.target.value)}
-                       placeholder={t.emailPlaceholder}
-                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                       {t.nationalId}
-                     </label>
-                     <input
-                       type="text"
-                       value={newTenant.nationalId}
-                       onChange={(e) => handleTenantInputChange('nationalId', e.target.value)}
-                       placeholder={t.nationalIdPlaceholder}
-                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                     />
-                   </div>
-                 </div>
-                 <div className="mt-4">
-                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                     {t.currentAddress}
-                   </label>
-                   <textarea
-                     value={newTenant.currentAddress}
-                     onChange={(e) => handleTenantInputChange('currentAddress', e.target.value)}
-                     placeholder={t.addressPlaceholder}
-                     rows={2}
-                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
-                   />
-                 </div>
-               </div>
+            {/* Modal Content */}
+            <div className="p-6 space-y-8">
+              {/* Personal Information Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <span className="text-blue-600 mr-2">👤</span>
+                  {t.personalInformation}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {t.tenantName} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newTenant.name}
+                      onChange={(e) => handleTenantInputChange('name', e.target.value)}
+                      placeholder={t.namePlaceholder}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {t.tenantPhone} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={newTenant.phone}
+                      onChange={(e) => handleTenantInputChange('phone', e.target.value)}
+                      placeholder={t.phonePlaceholder}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {t.tenantEmail}
+                    </label>
+                    <input
+                      type="email"
+                      value={newTenant.email}
+                      onChange={(e) => handleTenantInputChange('email', e.target.value)}
+                      placeholder={t.emailPlaceholder}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {t.nationalId}
+                    </label>
+                    <input
+                      type="text"
+                      value={newTenant.nationalId}
+                      onChange={(e) => handleTenantInputChange('nationalId', e.target.value)}
+                      placeholder={t.nationalIdPlaceholder}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    {t.currentAddress}
+                  </label>
+                  <textarea
+                    value={newTenant.currentAddress}
+                    onChange={(e) => handleTenantInputChange('currentAddress', e.target.value)}
+                    placeholder={t.addressPlaceholder}
+                    rows={2}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                  />
+                </div>
+              </div>
 
-               {/* Emergency Contact Section */}
-               <div>
-                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                   <span className="text-red-600 mr-2">🚨</span>
-                   {t.emergencyContact}
-                 </h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                       {t.emergencyContactName}
-                     </label>
-                     <input
-                       type="text"
-                       value={newTenant.emergencyContactName}
-                       onChange={(e) => handleTenantInputChange('emergencyContactName', e.target.value)}
-                       placeholder={t.emergencyNamePlaceholder}
-                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                       {t.emergencyContactPhone}
-                     </label>
-                     <input
-                       type="tel"
-                       value={newTenant.emergencyContactPhone}
-                       onChange={(e) => handleTenantInputChange('emergencyContactPhone', e.target.value)}
-                       placeholder={t.emergencyPhonePlaceholder}
-                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                     />
-                   </div>
-                 </div>
-               </div>
+              {/* Emergency Contact Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <span className="text-red-600 mr-2">🚨</span>
+                  {t.emergencyContact}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {t.emergencyContactName}
+                    </label>
+                    <input
+                      type="text"
+                      value={newTenant.emergencyContactName}
+                      onChange={(e) => handleTenantInputChange('emergencyContactName', e.target.value)}
+                      placeholder={t.emergencyNamePlaceholder}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {t.emergencyContactPhone}
+                    </label>
+                    <input
+                      type="tel"
+                      value={newTenant.emergencyContactPhone}
+                      onChange={(e) => handleTenantInputChange('emergencyContactPhone', e.target.value)}
+                      placeholder={t.emergencyPhonePlaceholder}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
 
-               {/* Lease Details Section */}
-               <div>
-                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                   <span className="text-green-600 mr-2">📋</span>
-                   {t.leaseDetails}
-                 </h3>
-                 <div className="space-y-4">
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                       {t.selectProperty} <span className="text-red-500">*</span>
-                     </label>
-                     <select
-                       value={newTenant.selectedProperty}
-                       onChange={(e) => {
-                         const selectedProp = allProperties.find(p => p.id.toString() === e.target.value)
-                         handleTenantInputChange('selectedProperty', e.target.value)
-                         if (selectedProp) {
-                           handleTenantInputChange('rentAmount', selectedProp.rent.toString())
-                         }
-                       }}
-                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                     >
-                       <option value="">{t.selectPropertyPlaceholder}</option>
-                       {allProperties.map((property) => (
-                         <option key={property.id} value={property.id}>
-                           {property.address} - {t.taka}{property.rent.toLocaleString()}
-                           {property.status === 'occupied' ? ' (Currently Occupied)' : ' (Available)'}
-                         </option>
-                       ))}
-                     </select>
-                   </div>
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div>
-                       <label className="block text-sm font-medium text-slate-700 mb-2">
-                         {t.leaseStartDate} <span className="text-red-500">*</span>
-                       </label>
-                       <input
-                         type="date"
-                         value={newTenant.leaseStartDate}
-                         onChange={(e) => handleTenantInputChange('leaseStartDate', e.target.value)}
-                         className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                       />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-slate-700 mb-2">
-                         {t.leaseEndDate}
-                       </label>
-                       <input
-                         type="date"
-                         value={newTenant.leaseEndDate}
-                         onChange={(e) => handleTenantInputChange('leaseEndDate', e.target.value)}
-                         className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                       />
-                     </div>
-                   </div>
+              {/* Lease Details Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <span className="text-green-600 mr-2">📋</span>
+                  {t.leaseDetails}
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {t.selectProperty} <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={newTenant.selectedProperty}
+                      onChange={(e) => {
+                        const selectedProp = properties.find(p => p.id.toString() === e.target.value)
+                        handleTenantInputChange('selectedProperty', e.target.value)
+                        if (selectedProp) {
+                          handleTenantInputChange('rentAmount', selectedProp.rent.toString())
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      <option value="">{t.selectPropertyPlaceholder}</option>
+                      {properties.map((property) => (
+                        <option key={property.id} value={property.id}>
+                          {property.address} - {t.taka}{property.rent.toLocaleString()}
+                          {property.status === 'occupied' ? ' (Currently Occupied)' : ' (Available)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        {t.leaseStartDate} <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={newTenant.leaseStartDate}
+                        onChange={(e) => handleTenantInputChange('leaseStartDate', e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        {t.leaseEndDate}
+                      </label>
+                      <input
+                        type="date"
+                        value={newTenant.leaseEndDate}
+                        onChange={(e) => handleTenantInputChange('leaseEndDate', e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                  </div>
 
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div>
-                       <label className="block text-sm font-medium text-slate-700 mb-2">
-                         {t.monthlyRent} ({t.taka})
-                       </label>
-                       <input
-                         type="number"
-                         min="0"
-                         value={newTenant.rentAmount}
-                         onChange={(e) => handleTenantInputChange('rentAmount', e.target.value)}
-                         placeholder={t.rentPlaceholder}
-                         className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                       />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-slate-700 mb-2">
-                         {t.securityDeposit} ({t.taka})
-                       </label>
-                       <input
-                         type="number"
-                         min="0"
-                         value={newTenant.securityDeposit}
-                         onChange={(e) => handleTenantInputChange('securityDeposit', e.target.value)}
-                         placeholder={t.depositPlaceholder}
-                         className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                       />
-                     </div>
-                   </div>
-                 </div>
-               </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        {t.monthlyRent} ({t.taka})
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={newTenant.rentAmount}
+                        onChange={(e) => handleTenantInputChange('rentAmount', e.target.value)}
+                        placeholder={t.rentPlaceholder}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        {t.securityDeposit} ({t.taka})
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={newTenant.securityDeposit}
+                        onChange={(e) => handleTenantInputChange('securityDeposit', e.target.value)}
+                        placeholder={t.depositPlaceholder}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-               {/* Additional Notes */}
-               <div>
-                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                   {t.additionalNotes}
-                 </label>
-                 <textarea
-                   value={newTenant.notes}
-                   onChange={(e) => handleTenantInputChange('notes', e.target.value)}
-                   placeholder={t.notesPlaceholder}
-                   rows={3}
-                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
-                 />
-               </div>
-             </div>
+              {/* Additional Notes */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  {t.additionalNotes}
+                </label>
+                <textarea
+                  value={newTenant.notes}
+                  onChange={(e) => handleTenantInputChange('notes', e.target.value)}
+                  placeholder={t.notesPlaceholder}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                />
+              </div>
+            </div>
 
-             {/* Modal Footer */}
-             <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-xl">
-               <div className="flex justify-end space-x-3">
-                 <button
-                   onClick={handleCloseTenantModal}
-                   className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium transition-colors"
-                 >
-                   {t.cancel}
-                 </button>
-                 <button
-                   onClick={handleSaveTenant}
-                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-                 >
-                   {t.saveTenant}
-                 </button>
-               </div>
-             </div>
-           </motion.div>
-         </div>
-       )}
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-xl">
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={handleCloseTenantModal}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium transition-colors"
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  onClick={handleSaveTenant}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  {t.saveTenant}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
-       {/* Send Reminder Modal */}
-       {showSendReminderModal && (
-         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-           <motion.div
-             initial={{ opacity: 0, scale: 0.95 }}
-             animate={{ opacity: 1, scale: 1 }}
-             exit={{ opacity: 0, scale: 0.95 }}
-             className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
-           >
-             {/* Modal Header */}
-             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-xl">
-               <div className="flex items-center justify-between">
-                 <h2 className="text-xl font-semibold text-slate-800">{t.sendReminderTitle}</h2>
-                 <button
-                   onClick={handleCloseReminderModal}
-                   className="text-slate-400 hover:text-slate-600 transition-colors"
-                 >
-                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                   </svg>
-                 </button>
-               </div>
-             </div>
+      {/* Send Reminder Modal */}
+      {showSendReminderModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-slate-800">{t.sendReminderTitle}</h2>
+                <button
+                  onClick={handleCloseReminderModal}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-             {/* Modal Content */}
-             <div className="p-6 space-y-6">
-               {/* Reminder Type & Delivery Method */}
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {/* Reminder Type */}
-                 <div>
-                   <label className="block text-sm font-medium text-slate-700 mb-3">
-                     {t.reminderType}
-                   </label>
-                   <select
-                     value={reminder.type}
-                     onChange={(e) => handleReminderInputChange('type', e.target.value)}
-                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                   >
-                     <option value="rent_due">📅 {t.rentDueReminder}</option>
-                     <option value="overdue_rent">⚠️ {t.overdueRentReminder}</option>
-                     <option value="lease_renewal">📋 {t.leaseRenewalReminder}</option>
-                     <option value="maintenance">🔧 {t.maintenanceReminder}</option>
-                     <option value="payment_confirmation">✅ {t.paymentConfirmation}</option>
-                     <option value="general_notice">📢 {t.generalNotice}</option>
-                   </select>
-                 </div>
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Reminder Type & Delivery Method */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Reminder Type */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-3">
+                    {t.reminderType}
+                  </label>
+                  <select
+                    value={reminder.type}
+                    onChange={(e) => handleReminderInputChange('type', e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="rent_due">📅 {t.rentDueReminder}</option>
+                    <option value="overdue_rent">⚠️ {t.overdueRentReminder}</option>
+                    <option value="lease_renewal">📋 {t.leaseRenewalReminder}</option>
+                    <option value="maintenance">🔧 {t.maintenanceReminder}</option>
+                    <option value="payment_confirmation">✅ {t.paymentConfirmation}</option>
+                    <option value="general_notice">📢 {t.generalNotice}</option>
+                  </select>
+                </div>
 
-                 {/* Delivery Method */}
-                 <div>
-                   <label className="block text-sm font-medium text-slate-700 mb-3">
-                     {t.deliveryMethod}
-                   </label>
-                   <select
-                     value={reminder.deliveryMethod}
-                     onChange={(e) => handleReminderInputChange('deliveryMethod', e.target.value)}
-                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                   >
-                     <option value="sms">📱 {t.sms}</option>
-                     <option value="email">📧 {t.email}</option>
-                     <option value="whatsapp">💬 {t.whatsapp}</option>
-                     <option value="inApp">🔔 {t.inApp}</option>
-                   </select>
-                 </div>
-               </div>
+                {/* Delivery Method */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-3">
+                    {t.deliveryMethod}
+                  </label>
+                  <select
+                    value={reminder.deliveryMethod}
+                    onChange={(e) => handleReminderInputChange('deliveryMethod', e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="sms">📱 {t.sms}</option>
+                    <option value="email">📧 {t.email}</option>
+                    <option value="whatsapp">💬 {t.whatsapp}</option>
+                    <option value="inApp">�� {t.inApp}</option>
+                  </select>
+                </div>
+              </div>
 
-               {/* Recipients Selection */}
-               <div>
-                 <label className="block text-sm font-medium text-slate-700 mb-3">
-                   {t.recipients} ({reminder.recipients.length} selected)
-                 </label>
-                 
-                 {/* Quick Select Options */}
-                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-                   <button
-                     onClick={() => {
-                       const allTenantIds = tenants.map(t => ({ id: t.id, type: 'tenant' }))
-                       setReminder(prev => ({ ...prev, recipients: allTenantIds }))
-                     }}
-                     className="flex items-center justify-center p-3 border border-slate-300 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm"
-                   >
-                     👥 {t.allTenants}
-                   </button>
-                   <button
-                     onClick={() => {
-                       const overdueIds = tenants.filter(t => t.status === 'overdue').map(t => ({ id: t.id, type: 'tenant' }))
-                       setReminder(prev => ({ ...prev, recipients: overdueIds }))
-                     }}
-                     className="flex items-center justify-center p-3 border border-slate-300 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all text-sm"
-                   >
-                     ⚠️ {t.overduePayments}
-                   </button>
-                   <button
-                     onClick={() => {
-                       const pendingIds = tenants.filter(t => t.status === 'pending').map(t => ({ id: t.id, type: 'tenant' }))
-                       setReminder(prev => ({ ...prev, recipients: pendingIds }))
-                     }}
-                     className="flex items-center justify-center p-3 border border-slate-300 rounded-lg hover:bg-yellow-50 hover:border-yellow-300 transition-all text-sm"
-                   >
-                     ⏰ {t.upcomingRent}
-                   </button>
-                 </div>
+              {/* Recipients Selection */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  {t.recipients} ({reminder.recipients.length} selected)
+                </label>
+                
+                {/* Quick Select Options */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                  <button
+                    onClick={() => {
+                      const allTenantIds = tenants.map(t => ({ id: t.id, type: 'tenant' }))
+                      setReminder(prev => ({ ...prev, recipients: allTenantIds }))
+                    }}
+                    className="flex items-center justify-center p-3 border border-slate-300 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm"
+                  >
+                    👥 {t.allTenants}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const overdueIds = tenants.filter(t => t.status === 'overdue').map(t => ({ id: t.id, type: 'tenant' }))
+                      setReminder(prev => ({ ...prev, recipients: overdueIds }))
+                    }}
+                    className="flex items-center justify-center p-3 border border-slate-300 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all text-sm"
+                  >
+                    ⚠️ {t.overduePayments}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const pendingIds = tenants.filter(t => t.status === 'pending').map(t => ({ id: t.id, type: 'tenant' }))
+                      setReminder(prev => ({ ...prev, recipients: pendingIds }))
+                    }}
+                    className="flex items-center justify-center p-3 border border-slate-300 rounded-lg hover:bg-yellow-50 hover:border-yellow-300 transition-all text-sm"
+                  >
+                    ⏰ {t.upcomingRent}
+                  </button>
+                </div>
 
-                 {/* Individual Tenant Selection */}
-                 <div className="border border-slate-200 rounded-lg p-4 max-h-48 overflow-y-auto">
-                   <h4 className="text-sm font-medium text-slate-700 mb-3">{t.individualTenant}</h4>
-                   <div className="space-y-2">
-                     {tenants.map((tenant) => (
-                       <label key={tenant.id} className="flex items-center space-x-3 cursor-pointer group">
-                         <input
-                           type="checkbox"
-                           checked={reminder.recipients.some(r => r.id === tenant.id && r.type === 'tenant')}
-                           onChange={() => handleRecipientToggle(tenant.id, 'tenant')}
-                           className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                         />
-                         <div className="flex-1 min-w-0">
-                           <p className="text-sm font-medium text-slate-800 group-hover:text-slate-900">
-                             {tenant.name}
-                           </p>
-                           <p className="text-xs text-slate-500">
-                             {tenant.property} • {tenant.phone} • 
-                             <span className={`ml-1 px-1 rounded text-xs ${getStatusColor(tenant.status)}`}>
-                               {tenant.status === 'paid' ? t.paid : tenant.status === 'pending' ? t.pending : t.overdue}
-                             </span>
-                           </p>
-                         </div>
-                       </label>
-                     ))}
-                   </div>
-                 </div>
-               </div>
+                {/* Individual Tenant Selection */}
+                <div className="border border-slate-200 rounded-lg p-4 max-h-48 overflow-y-auto">
+                  <h4 className="text-sm font-medium text-slate-700 mb-3">{t.individualTenant}</h4>
+                  <div className="space-y-2">
+                    {tenants.map((tenant) => (
+                      <label key={tenant.id} className="flex items-center space-x-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={reminder.recipients.some(r => r.id === tenant.id && r.type === 'tenant')}
+                          onChange={() => handleRecipientToggle(tenant.id, 'tenant')}
+                          className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 group-hover:text-slate-900">
+                            {tenant.name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {tenant.property} • {tenant.phone} • 
+                            <span className={`ml-1 px-1 rounded text-xs ${getStatusColor(tenant.status)}`}>
+                              {tenant.status === 'paid' ? t.paid : tenant.status === 'pending' ? t.pending : t.overdue}
+                            </span>
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
-               {/* Message Content */}
-               <div>
-                 <label className="block text-sm font-medium text-slate-700 mb-3">
-                   {t.messageContent}
-                 </label>
-                 
-                 {/* Template Toggle */}
-                 <div className="flex items-center space-x-4 mb-4">
-                   <label className="flex items-center cursor-pointer">
-                     <input
-                       type="radio"
-                       checked={reminder.useTemplate}
-                       onChange={() => handleReminderInputChange('useTemplate', true)}
-                       className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
-                     />
-                     <span className="ml-2 text-sm text-slate-700">{t.useTemplate}</span>
-                   </label>
-                   <label className="flex items-center cursor-pointer">
-                     <input
-                       type="radio"
-                       checked={!reminder.useTemplate}
-                       onChange={() => handleReminderInputChange('useTemplate', false)}
-                       className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
-                     />
-                     <span className="ml-2 text-sm text-slate-700">{t.customMessage}</span>
-                   </label>
-                 </div>
+              {/* Message Content */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  {t.messageContent}
+                </label>
+                
+                {/* Template Toggle */}
+                <div className="flex items-center space-x-4 mb-4">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={reminder.useTemplate}
+                      onChange={() => handleReminderInputChange('useTemplate', true)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-slate-700">{t.useTemplate}</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={!reminder.useTemplate}
+                      onChange={() => handleReminderInputChange('useTemplate', false)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-slate-700">{t.customMessage}</span>
+                  </label>
+                </div>
 
-                 {/* Template Preview or Custom Message */}
-                 {reminder.useTemplate ? (
-                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                     <p className="text-sm font-medium text-slate-700 mb-2">{t.previewMessage}:</p>
-                     <p className="text-sm text-slate-600 italic">
-                       {getTemplateMessage(reminder.type)}
-                     </p>
-                     <p className="text-xs text-slate-500 mt-2">
-                       * [Name], [Property], [Date], [Amount], [Days] will be automatically replaced with actual values
-                     </p>
-                   </div>
-                 ) : (
-                   <textarea
-                     value={reminder.customMessage}
-                     onChange={(e) => handleReminderInputChange('customMessage', e.target.value)}
-                     placeholder={t.customMessagePlaceholder}
-                     rows={4}
-                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
-                   />
-                 )}
-               </div>
+                {/* Template Preview or Custom Message */}
+                {reminder.useTemplate ? (
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                    <p className="text-sm font-medium text-slate-700 mb-2">{t.previewMessage}:</p>
+                    <p className="text-sm text-slate-600 italic">
+                      {getTemplateMessage(reminder.type)}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2">
+                      * [Name], [Property], [Date], [Amount], [Days] will be automatically replaced with actual values
+                    </p>
+                  </div>
+                ) : (
+                  <textarea
+                    value={reminder.customMessage}
+                    onChange={(e) => handleReminderInputChange('customMessage', e.target.value)}
+                    placeholder={t.customMessagePlaceholder}
+                    rows={4}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                  />
+                )}
+              </div>
 
-               {/* Schedule Options */}
-               <div>
-                 <label className="block text-sm font-medium text-slate-700 mb-3">
-                   {t.scheduleReminder}
-                 </label>
-                 
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                   <div className="md:col-span-1">
-                     <div className="flex items-center space-x-4">
-                       <label className="flex items-center cursor-pointer">
-                         <input
-                           type="radio"
-                           checked={!reminder.scheduledDate}
-                           onChange={() => {
-                             handleReminderInputChange('scheduledDate', '')
-                             handleReminderInputChange('scheduledTime', '')
-                           }}
-                           className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
-                         />
-                         <span className="ml-2 text-sm text-slate-700">{t.sendNow}</span>
-                       </label>
-                       <label className="flex items-center cursor-pointer">
-                         <input
-                           type="radio"
-                           checked={!!reminder.scheduledDate}
-                           onChange={() => {
-                             const tomorrow = new Date()
-                             tomorrow.setDate(tomorrow.getDate() + 1)
-                             handleReminderInputChange('scheduledDate', tomorrow.toISOString().split('T')[0])
-                             handleReminderInputChange('scheduledTime', '09:00')
-                           }}
-                           className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
-                         />
-                         <span className="ml-2 text-sm text-slate-700">{t.sendLater}</span>
-                       </label>
-                     </div>
-                   </div>
-                   
-                   {reminder.scheduledDate && (
-                     <>
-                       <div>
-                         <input
-                           type="date"
-                           value={reminder.scheduledDate}
-                           onChange={(e) => handleReminderInputChange('scheduledDate', e.target.value)}
-                           min={new Date().toISOString().split('T')[0]}
-                           className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                         />
-                       </div>
-                       <div>
-                         <input
-                           type="time"
-                           value={reminder.scheduledTime}
-                           onChange={(e) => handleReminderInputChange('scheduledTime', e.target.value)}
-                           className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                         />
-                       </div>
-                     </>
-                   )}
-                 </div>
-               </div>
-
-               {/* Cost Estimation */}
-               {reminder.deliveryMethod === 'sms' && reminder.recipients.length > 0 && (
-                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                   <h4 className="text-sm font-medium text-blue-800 mb-2">{t.estimatedCost}</h4>
-                   <div className="text-sm text-blue-700">
-                     <p>{reminder.recipients.length} {t.totalMessages} × ৳2.50 {t.smsPerMessage} = ৳{(reminder.recipients.length * 2.5).toFixed(2)}</p>
-                   </div>
-                 </div>
-               )}
-             </div>
-
-             {/* Modal Footer */}
-             <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-xl">
-               <div className="flex justify-between items-center">
-                 <div className="text-sm text-slate-600">
-                   {reminder.recipients.length > 0 && (
-                     <span>Ready to send to {reminder.recipients.length} recipient(s)</span>
-                   )}
-                 </div>
-                 <div className="flex space-x-3">
-                   <button
-                     onClick={handleCloseReminderModal}
-                     className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium transition-colors"
-                   >
-                     {t.cancel}
-                   </button>
-                   <button
-                     onClick={handleSendReminderAction}
-                     disabled={reminder.recipients.length === 0}
-                     className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
-                   >
-                     {reminder.scheduledDate ? `📅 ${t.sendLater}` : `📲 ${t.sendReminder}`}
-                   </button>
-                 </div>
-               </div>
-             </div>
-           </motion.div>
-         </div>
-       )}
-
-       {/* Property Details Modal */}
-       {showPropertyDetailsModal && selectedProperty && (
-         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-           <motion.div
-             initial={{ opacity: 0, scale: 0.95 }}
-             animate={{ opacity: 1, scale: 1 }}
-             exit={{ opacity: 0, scale: 0.95 }}
-             className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
-           >
-             {/* Modal Header */}
-             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-xl">
-               <div className="flex items-center justify-between">
-                 <div>
-                   <h2 className="text-xl font-semibold text-slate-800">{t.propertyDetailsTitle}</h2>
-                   <p className="text-sm text-slate-600 mt-1">{selectedProperty.address}</p>
-                 </div>
-                 <button
-                   onClick={handleClosePropertyDetailsModal}
-                   className="text-slate-400 hover:text-slate-600 transition-colors"
-                 >
-                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                   </svg>
-                 </button>
-               </div>
-             </div>
-
-             {/* Modal Content */}
-             <div className="p-6 space-y-6">
-               {/* Property Information Grid */}
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 {/* Basic Property Info */}
-                 <div className="bg-slate-50 rounded-lg p-4">
-                   <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                     <span className="text-blue-600 mr-2">🏠</span>
-                     {t.propertyInformation}
-                   </h3>
-                   <div className="space-y-3">
-                     <div className="flex justify-between">
-                       <span className="text-slate-600">{t.propertyType}:</span>
-                       <span className="font-medium text-slate-800 capitalize">{selectedProperty.type}</span>
-                     </div>
-                     <div className="flex justify-between">
-                       <span className="text-slate-600">{t.bedrooms}:</span>
-                       <span className="font-medium text-slate-800">{selectedProperty.bedrooms}</span>
-                     </div>
-                     <div className="flex justify-between">
-                       <span className="text-slate-600">{t.bathrooms}:</span>
-                       <span className="font-medium text-slate-800">{selectedProperty.bathrooms}</span>
-                     </div>
-                     <div className="flex justify-between">
-                       <span className="text-slate-600">{t.monthlyRent}:</span>
-                       <span className="font-medium text-slate-800">{t.taka}{selectedProperty.rent.toLocaleString()}</span>
-                     </div>
-                     <div className="flex justify-between">
-                       <span className="text-slate-600">{t.status}:</span>
-                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedProperty.status)}`}>
-                         {selectedProperty.status === 'occupied' ? t.occupied : t.vacant}
-                       </span>
-                     </div>
-                   </div>
-                   {selectedProperty.description && (
-                     <div className="mt-4 pt-4 border-t border-slate-200">
-                       <p className="text-sm text-slate-600">{selectedProperty.description}</p>
-                     </div>
-                   )}
-                 </div>
-
-                 {/* Current Tenant Info */}
-                 <div className="bg-slate-50 rounded-lg p-4">
-                   <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                     <span className="text-green-600 mr-2">👤</span>
-                     {t.currentTenant}
-                   </h3>
-                   {selectedProperty.tenant ? (
-                     <div className="space-y-3">
-                       {(() => {
-                         const tenant = tenants.find(t => t.name === selectedProperty.tenant)
-                         return tenant ? (
-                           <>
-                             <div className="flex justify-between">
-                               <span className="text-slate-600">{t.tenantName}:</span>
-                               <span className="font-medium text-slate-800">{tenant.name}</span>
-                             </div>
-                             <div className="flex justify-between">
-                               <span className="text-slate-600">{t.tenantPhone}:</span>
-                               <span className="font-medium text-slate-800">{tenant.phone}</span>
-                             </div>
-                             <div className="flex justify-between">
-                               <span className="text-slate-600">{t.rentDue}:</span>
-                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(tenant.status)}`}>
-                                 {tenant.status === 'paid' ? t.paid : tenant.status === 'pending' ? t.pending : t.overdue}
-                               </span>
-                             </div>
-                             {selectedProperty.leaseStart && (
-                               <>
-                                 <div className="flex justify-between">
-                                   <span className="text-slate-600">{t.leaseStart}:</span>
-                                   <span className="font-medium text-slate-800">{new Date(selectedProperty.leaseStart).toLocaleDateString()}</span>
-                                 </div>
-                                 {selectedProperty.leaseEnd && (
-                                   <div className="flex justify-between">
-                                     <span className="text-slate-600">{t.leaseEnd}:</span>
-                                     <span className="font-medium text-slate-800">{new Date(selectedProperty.leaseEnd).toLocaleDateString()}</span>
-                                   </div>
-                                 )}
-                               </>
-                             )}
-                             {selectedProperty.securityDeposit > 0 && (
-                               <div className="flex justify-between">
-                                 <span className="text-slate-600">{t.securityDepositAmount}:</span>
-                                 <span className="font-medium text-slate-800">{t.taka}{selectedProperty.securityDeposit.toLocaleString()}</span>
-                               </div>
-                             )}
-                                                           <div className="pt-3 border-t border-slate-200">
-                                <button 
-                                  onClick={() => handleContactTenant(tenant)}
-                                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors text-sm"
-                                >
-                                  {t.contactTenant}
-                                </button>
-                              </div>
-                           </>
-                         ) : null
-                       })()}
-                     </div>
-                   ) : (
-                                           <div className="text-center py-6">
-                        <p className="text-slate-500 mb-4">{t.noTenant}</p>
-                        <button 
-                          onClick={() => handleAddTenantToProperty(selectedProperty)}
-                          className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors text-sm"
-                        >
-                          {t.addTenantToProperty}
-                        </button>
+              {/* Schedule Options */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  {t.scheduleReminder}
+                </label>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-1">
+                    <div className="flex items-center space-x-4">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={!reminder.scheduledDate}
+                          onChange={() => {
+                            handleReminderInputChange('scheduledDate', '')
+                            handleReminderInputChange('scheduledTime', '')
+                          }}
+                          className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm text-slate-700">{t.sendNow}</span>
+                      </label>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={!!reminder.scheduledDate}
+                          onChange={() => {
+                            const tomorrow = new Date()
+                            tomorrow.setDate(tomorrow.getDate() + 1)
+                            handleReminderInputChange('scheduledDate', tomorrow.toISOString().split('T')[0])
+                            handleReminderInputChange('scheduledTime', '09:00')
+                          }}
+                          className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm text-slate-700">{t.sendLater}</span>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {reminder.scheduledDate && (
+                    <>
+                      <div>
+                        <input
+                          type="date"
+                          value={reminder.scheduledDate}
+                          onChange={(e) => handleReminderInputChange('scheduledDate', e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        />
                       </div>
-                   )}
-                 </div>
-               </div>
+                      <div>
+                        <input
+                          type="time"
+                          value={reminder.scheduledTime}
+                          onChange={(e) => handleReminderInputChange('scheduledTime', e.target.value)}
+                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
 
-               {/* Property Statistics */}
-               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
-                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                   <span className="text-purple-600 mr-2">📊</span>
-                   {t.propertyStats}
-                 </h3>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                   <div className="text-center">
-                     <p className="text-2xl font-bold text-blue-600">{t.taka}{selectedProperty.totalRentCollected.toLocaleString()}</p>
-                     <p className="text-sm text-slate-600">{t.totalRentCollected}</p>
-                   </div>
-                   <div className="text-center">
-                     <p className="text-2xl font-bold text-green-600">{selectedProperty.occupancyRate}%</p>
-                     <p className="text-sm text-slate-600">{t.occupancyRate}</p>
-                   </div>
-                   <div className="text-center">
-                     <p className="text-2xl font-bold text-orange-600">12</p>
-                     <p className="text-sm text-slate-600">{t.averageStayDuration} ({t.months})</p>
-                   </div>
-                 </div>
-               </div>
+              {/* Cost Estimation */}
+              {reminder.deliveryMethod === 'sms' && reminder.recipients.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-blue-800 mb-2">{t.estimatedCost}</h4>
+                  <div className="text-sm text-blue-700">
+                    <p>{reminder.recipients.length} {t.totalMessages} × ৳2.50 {t.smsPerMessage} = ৳{(reminder.recipients.length * 2.5).toFixed(2)}</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
-               {/* Property Amenities */}
-               {selectedProperty.amenities && selectedProperty.amenities.length > 0 && (
-                 <div>
-                   <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                     <span className="text-yellow-600 mr-2">⭐</span>
-                     {t.propertyAmenities}
-                   </h3>
-                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                     {selectedProperty.amenities.map((amenity) => {
-                       const amenityIcons = {
-                         parking: '🚗',
-                         garden: '🌳',
-                         balcony: '🏗️',
-                         furnished: '🛋️',
-                         airConditioning: '❄️',
-                         internet: '📶',
-                         security: '🔒',
-                         elevator: '🛗'
-                       }
-                       const amenityLabels = {
-                         parking: t.parking,
-                         garden: t.garden,
-                         balcony: t.balcony,
-                         furnished: t.furnished,
-                         airConditioning: t.airConditioning,
-                         internet: t.internet,
-                         security: t.security,
-                         elevator: t.elevator
-                       }
-                       return (
-                         <div key={amenity} className="flex items-center space-x-2 bg-white rounded-lg p-3 border border-slate-200">
-                           <span className="text-lg">{amenityIcons[amenity]}</span>
-                           <span className="text-sm text-slate-700">{amenityLabels[amenity]}</span>
-                         </div>
-                       )
-                     })}
-                   </div>
-                 </div>
-               )}
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-xl">
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-slate-600">
+                  {reminder.recipients.length > 0 && (
+                    <span>Ready to send to {reminder.recipients.length} recipient(s)</span>
+                  )}
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={handleCloseReminderModal}
+                    className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium transition-colors"
+                  >
+                    {t.cancel}
+                  </button>
+                  <button
+                    onClick={handleSendReminderAction}
+                    disabled={reminder.recipients.length === 0}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                  >
+                    {reminder.scheduledDate ? `📅 ${t.sendLater}` : `📲 ${t.sendReminder}`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
-               {/* Recent Payments */}
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <div>
-                   <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                     <span className="text-green-600 mr-2">💰</span>
-                     {t.recentPayments}
-                   </h3>
-                   <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-200">
-                     {(() => {
-                       const propertyPayments = payments.filter(p => p.property.includes(selectedProperty.address.split(',')[0]))
-                       return propertyPayments.length > 0 ? (
-                         propertyPayments.slice(0, 3).map((payment) => (
-                           <div key={payment.id} className="p-4 hover:bg-slate-50">
-                             <div className="flex justify-between items-center">
-                               <div>
-                                 <p className="font-medium text-slate-800">{t.taka}{payment.amount.toLocaleString()}</p>
-                                 <p className="text-sm text-slate-600">{payment.date}</p>
-                               </div>
-                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
-                                 {payment.status === 'paid' ? t.paid : payment.status === 'pending' ? t.pending : t.overdue}
-                               </span>
-                             </div>
-                           </div>
-                         ))
-                       ) : (
-                         <div className="p-4 text-center text-slate-500">
-                           {t.noPayments}
-                         </div>
-                       )
-                     })()}
-                   </div>
-                 </div>
+      {/* Property Details Modal */}
+      {showPropertyDetailsModal && selectedProperty && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-slate-800">{t.propertyDetailsTitle}</h2>
+                <button
+                  onClick={handleClosePropertyDetailsModal}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-                 {/* Maintenance History */}
-                 <div>
-                   <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                     <span className="text-orange-600 mr-2">🔧</span>
-                     {t.maintenanceHistory}
-                   </h3>
-                   <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-200">
-                     {(() => {
-                       const propertyMaintenance = maintenanceRequests.filter(m => m.property.includes(selectedProperty.address.split(',')[0]))
-                       return propertyMaintenance.length > 0 ? (
-                         propertyMaintenance.slice(0, 3).map((request) => (
-                           <div key={request.id} className="p-4 hover:bg-slate-50">
-                             <div className="flex justify-between items-start">
-                               <div className="flex-1">
-                                 <p className="font-medium text-slate-800 text-sm">{request.issue}</p>
-                                 <p className="text-xs text-slate-600 mt-1">{request.date}</p>
-                               </div>
-                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.priority)}`}>
-                                 {request.priority === 'high' ? t.high : request.priority === 'medium' ? t.medium : t.low}
-                               </span>
-                             </div>
-                           </div>
-                         ))
-                       ) : (
-                         <div className="p-4 text-center text-slate-500">
-                           {t.noMaintenance}
-                         </div>
-                       )
-                     })()}
-                   </div>
-                 </div>
-               </div>
-             </div>
+            {/* Modal Content */}
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left Column: Property Info */}
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">{t.propertyInformation}</h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium text-slate-600">{t.address}:</span>
+                      <span className="text-slate-800 text-right">{selectedProperty.address}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-slate-600">{t.propertyType}:</span>
+                      <span className="text-slate-800">{selectedProperty.property_type}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-slate-600">{t.bedrooms}:</span>
+                      <span className="text-slate-800">{selectedProperty.bedrooms}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-slate-600">{t.bathrooms}:</span>
+                      <span className="text-slate-800">{selectedProperty.bathrooms}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-slate-600">{t.monthlyRent}:</span>
+                      <span className="text-slate-800 font-semibold">{t.taka}{(selectedProperty.rent || 0).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
 
-             {/* Modal Footer */}
-             <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-xl">
-               <div className="flex justify-between items-center">
-                 <div className="flex space-x-3">
-                   <button 
-                     onClick={() => handleEditProperty(selectedProperty)}
-                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm"
-                   >
-                     {t.editProperty}
-                   </button>
-                   {selectedProperty.status === 'occupied' && (
-                     <button 
-                       onClick={() => handleMarkAsVacant(selectedProperty)}
-                       className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors text-sm"
-                     >
-                       {t.markAsVacant}
-                     </button>
-                   )}
-                 </div>
-                 <div className="flex space-x-3">
-                   <button 
-                     onClick={() => handleViewFullHistory(selectedProperty)}
-                     className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium transition-colors text-sm"
-                   >
-                     {t.viewFullHistory}
-                   </button>
-                   <button
-                     onClick={handleClosePropertyDetailsModal}
-                     className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium transition-colors"
-                   >
-                     {t.cancel}
-                   </button>
-                 </div>
-               </div>
-             </div>
-           </motion.div>
-         </div>
-       )}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">{t.propertyAmenities}</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {(selectedProperty.amenities || []).map((amenity, i) => (
+                      <span key={i} className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">{amenity}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
-       {/* Assign Maintenance Modal */}
-       {showResolveMaintenanceModal && selectedMaintenanceRequest && (
-         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-           <motion.div
-             initial={{ opacity: 0, scale: 0.95 }}
-             animate={{ opacity: 1, scale: 1 }}
-             exit={{ opacity: 0, scale: 0.95 }}
-             className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
-           >
-             {/* Modal Header */}
-             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-xl">
-               <div className="flex items-center justify-between">
-                 <div>
-                   <h2 className="text-xl font-semibold text-slate-800">{t.assignMaintenanceTitle}</h2>
-                   <p className="text-sm text-slate-600 mt-1">Request #{selectedMaintenanceRequest.id}</p>
-                 </div>
-                 <button
-                   onClick={handleCloseAssignMaintenanceModal}
-                   className="text-slate-400 hover:text-slate-600 transition-colors"
-                 >
-                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                   </svg>
-                 </button>
-               </div>
-             </div>
+              {/* Right Column: Tenant & Stats */}
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">{t.currentTenant}</h3>
+                  <div className="bg-slate-50 p-4 rounded-lg">
+                    <p className="text-slate-600">{t.noTenant}</p>
+                  </div>
+                </div>
 
-             {/* Modal Content */}
-             <div className="p-6 space-y-6">
-               {/* Original Request Details */}
-               <div className="bg-slate-50 rounded-lg p-4">
-                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                   <span className="text-blue-600 mr-2">📋</span>
-                   {t.requestDetails}
-                 </h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-1">{t.requestedBy}</label>
-                     <p className="text-slate-800">{selectedMaintenanceRequest.tenant}</p>
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-1">{t.property}</label>
-                     <p className="text-slate-800">{selectedMaintenanceRequest.property}</p>
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-1">{t.requestDate}</label>
-                     <p className="text-slate-800">{selectedMaintenanceRequest.date}</p>
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-1">{t.priority}</label>
-                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedMaintenanceRequest.priority)}`}>
-                       {selectedMaintenanceRequest.priority === 'high' ? t.high : 
-                        selectedMaintenanceRequest.priority === 'medium' ? t.medium : t.low}
-                     </span>
-                   </div>
-                 </div>
-                 <div className="mt-4">
-                   <label className="block text-sm font-medium text-slate-700 mb-1">{t.issue}</label>
-                   <p className="text-slate-800 bg-white p-3 rounded border">{selectedMaintenanceRequest.issue}</p>
-                 </div>
-               </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">{t.propertyStats}</h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium text-slate-600">{t.totalRentCollected}:</span>
+                      <span className="text-slate-800">{t.taka}0</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-slate-600">{t.occupancyRate}:</span>
+                      <span className="text-slate-800">0%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-               {/* Team Selection */}
-               <div>
-                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                   <span className="text-orange-600 mr-2">👷</span>
-                   {t.assignmentDetails}
-                 </h3>
-                 <div>
-                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                     {t.selectMaintenanceTeam} <span className="text-red-500">*</span>
-                   </label>
-                   <select
-                     value={maintenanceAssignment.selectedTeam}
-                     onChange={(e) => handleMaintenanceAssignmentChange('selectedTeam', e.target.value)}
-                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                   >
-                     <option value="">Select a team...</option>
-                     {Object.values(maintenanceTeams).map((team) => (
-                       <option key={team.id} value={team.id} disabled={team.availability === 'busy'}>
-                         {team.icon} {team.name} - {team.availability === 'available' ? t.teamAvailable : t.teamBusy}
-                       </option>
-                     ))}
-                   </select>
-                 </div>
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-xl">
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => handleEditProperty(selectedProperty)}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium transition-colors"
+                >
+                  {t.editProperty}
+                </button>
+                <button
+                  onClick={() => { /* Add delete logic here */ }}
+                  className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-medium rounded-lg transition-colors"
+                >
+                  {t.deleteProperty}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
-                 {/* Team Information Display */}
-                 {maintenanceAssignment.selectedTeam && (
-                   <div className="mt-4 bg-white border border-slate-200 rounded-lg p-4">
-                     <h4 className="font-medium text-slate-800 mb-3">{t.teamContactInfo}</h4>
-                     {(() => {
-                       const team = maintenanceTeams[maintenanceAssignment.selectedTeam]
-                       return (
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                           <div>
-                             <span className="text-slate-600">{t.teamLeader}:</span>
-                             <p className="font-medium">{team.leader}</p>
-                           </div>
-                           <div>
-                             <span className="text-slate-600">{t.teamPhone}:</span>
-                             <p className="font-medium">{team.phone}</p>
-                           </div>
-                           <div className="md:col-span-2">
-                             <span className="text-slate-600">{t.teamSpecialization}:</span>
-                             <p className="font-medium">{team.specialization}</p>
-                           </div>
-                           <div>
-                             <span className="text-slate-600">{t.teamAvailability}:</span>
-                             <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
-                               team.availability === 'available' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                             }`}>
-                               {team.availability === 'available' ? t.teamAvailable : t.teamBusy}
-                             </span>
-                           </div>
-                           <div>
-                             <span className="text-slate-600">{t.costPerHour}:</span>
-                             <p className="font-medium">{t.taka}{team.costPerHour}/hour</p>
-                           </div>
-                         </div>
-                       )
-                     })()}
-                   </div>
-                 )}
-               </div>
+      {/* Assign Maintenance Modal */}
+      {showResolveMaintenanceModal && selectedMaintenanceRequest && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-800">{t.assignMaintenanceTitle}</h2>
+                  <p className="text-sm text-slate-600 mt-1">Request #{selectedMaintenanceRequest.id}</p>
+                </div>
+                <button
+                  onClick={handleCloseAssignMaintenanceModal}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-               {/* Priority and Instructions */}
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div>
-                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                     {t.workPriority}
-                   </label>
-                   <select
-                     value={maintenanceAssignment.priority}
-                     onChange={(e) => handleMaintenanceAssignmentChange('priority', e.target.value)}
-                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                   >
-                     <option value="low">🔵 {t.low}</option>
-                     <option value="normal">🟡 {t.normal}</option>
-                     <option value="urgent">🔴 {t.urgent}</option>
-                   </select>
-                 </div>
-                 <div>
-                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                     {t.expectedCompletion} <span className="text-red-500">*</span>
-                   </label>
-                   <input
-                     type="date"
-                     value={maintenanceAssignment.expectedCompletionDate}
-                     onChange={(e) => handleMaintenanceAssignmentChange('expectedCompletionDate', e.target.value)}
-                     min={new Date().toISOString().split('T')[0]}
-                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                   />
-                 </div>
-               </div>
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Original Request Details */}
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <span className="text-blue-600 mr-2">📋</span>
+                  {t.requestDetails}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">{t.requestedBy}</label>
+                    <p className="text-slate-800">{selectedMaintenanceRequest.tenant}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">{t.property}</label>
+                    <p className="text-slate-800">{selectedMaintenanceRequest.property}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">{t.requestDate}</label>
+                    <p className="text-slate-800">{selectedMaintenanceRequest.date}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">{t.priority}</label>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedMaintenanceRequest.priority)}`}>
+                      {selectedMaintenanceRequest.priority === 'high' ? t.high : 
+                       selectedMaintenanceRequest.priority === 'medium' ? t.medium : t.low}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t.issue}</label>
+                  <p className="text-slate-800 bg-white p-3 rounded border">{selectedMaintenanceRequest.issue}</p>
+                </div>
+              </div>
 
-               {/* Special Instructions */}
-               <div>
-                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                   {t.specialInstructions}
-                 </label>
-                 <textarea
-                   value={maintenanceAssignment.specialInstructions}
-                   onChange={(e) => handleMaintenanceAssignmentChange('specialInstructions', e.target.value)}
-                   placeholder={t.instructionsPlaceholder}
-                   rows={3}
-                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
-                 />
-               </div>
+              {/* Team Selection */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <span className="text-orange-600 mr-2">👷</span>
+                  {t.assignmentDetails}
+                </h3>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    {t.selectMaintenanceTeam} <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={maintenanceAssignment.selectedTeam}
+                    onChange={(e) => handleMaintenanceAssignmentChange('selectedTeam', e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="">Select a team...</option>
+                    {Object.values(maintenanceTeams).map((team) => (
+                      <option key={team.id} value={team.id} disabled={team.availability === 'busy'}>
+                        {team.icon} {team.name} - {team.availability === 'available' ? t.teamAvailable : t.teamBusy}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-               {/* Cost and Scheduling */}
-               <div>
-                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                   <span className="text-green-600 mr-2">📅</span>
-                   {t.schedulingSection}
-                 </h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                       {t.costApprovalLimit} ({t.taka})
-                     </label>
-                     <input
-                       type="number"
-                       min="0"
-                       value={maintenanceAssignment.costApprovalLimit}
-                       onChange={(e) => handleMaintenanceAssignmentChange('costApprovalLimit', e.target.value)}
-                       placeholder={t.costLimitPlaceholder}
-                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                       {t.visitDate}
-                     </label>
-                     <input
-                       type="date"
-                       value={maintenanceAssignment.scheduledDate}
-                       onChange={(e) => handleMaintenanceAssignmentChange('scheduledDate', e.target.value)}
-                       min={new Date().toISOString().split('T')[0]}
-                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                     />
-                   </div>
-                 </div>
-                 {maintenanceAssignment.scheduledDate && (
-                   <div className="mt-4">
-                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                       {t.visitTime}
-                     </label>
-                     <input
-                       type="time"
-                       value={maintenanceAssignment.scheduledTime}
-                       onChange={(e) => handleMaintenanceAssignmentChange('scheduledTime', e.target.value)}
-                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                     />
-                   </div>
-                 )}
-               </div>
+                {/* Team Information Display */}
+                {maintenanceAssignment.selectedTeam && (
+                  <div className="mt-4 bg-white border border-slate-200 rounded-lg p-4">
+                    <h4 className="font-medium text-slate-800 mb-3">{t.teamContactInfo}</h4>
+                    {(() => {
+                      const team = maintenanceTeams[maintenanceAssignment.selectedTeam]
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-slate-600">{t.teamLeader}:</span>
+                            <p className="font-medium">{team.leader}</p>
+                          </div>
+                          <div>
+                            <span className="text-slate-600">{t.teamPhone}:</span>
+                            <p className="font-medium">{team.phone}</p>
+                          </div>
+                          <div className="md:col-span-2">
+                            <span className="text-slate-600">{t.teamSpecialization}:</span>
+                            <p className="font-medium">{team.specialization}</p>
+                          </div>
+                          <div>
+                            <span className="text-slate-600">{t.teamAvailability}:</span>
+                            <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                              team.availability === 'available' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {team.availability === 'available' ? t.teamAvailable : t.teamBusy}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-600">{t.costPerHour}:</span>
+                            <p className="font-medium">{t.taka}{team.costPerHour}/hour</p>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
+              </div>
 
-               {/* Notifications */}
-               <div>
-                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                   <span className="text-purple-600 mr-2">🔔</span>
-                   {t.notificationSettings}
-                 </h3>
-                 <div className="space-y-3">
-                   <label className="flex items-center space-x-3 cursor-pointer">
-                     <input
-                       type="checkbox"
-                       checked={maintenanceAssignment.notifyTeam}
-                       onChange={(e) => handleMaintenanceAssignmentChange('notifyTeam', e.target.checked)}
-                       className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                     />
-                     <span className="text-sm font-medium text-slate-700">{t.notifyTeam}</span>
-                   </label>
-                   <label className="flex items-center space-x-3 cursor-pointer">
-                     <input
-                       type="checkbox"
-                       checked={maintenanceAssignment.notifyTenant}
-                       onChange={(e) => handleMaintenanceAssignmentChange('notifyTenant', e.target.checked)}
-                       className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                     />
-                     <span className="text-sm font-medium text-slate-700">{t.notifyTenant}</span>
-                   </label>
-                 </div>
-               </div>
-             </div>
+              {/* Priority and Instructions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    {t.workPriority}
+                  </label>
+                  <select
+                    value={maintenanceAssignment.priority}
+                    onChange={(e) => handleMaintenanceAssignmentChange('priority', e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="low">🔵 {t.low}</option>
+                    <option value="normal">🟡 {t.normal}</option>
+                    <option value="urgent">🔴 {t.urgent}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    {t.expectedCompletion} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={maintenanceAssignment.expectedCompletionDate}
+                    onChange={(e) => handleMaintenanceAssignmentChange('expectedCompletionDate', e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
 
-             {/* Modal Footer */}
-             <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-xl">
-               <div className="flex justify-between items-center">
-                 <div className="text-sm text-slate-600">
-                   {maintenanceAssignment.selectedTeam && maintenanceTeams[maintenanceAssignment.selectedTeam] && (
-                     <span>
-                       {maintenanceTeams[maintenanceAssignment.selectedTeam].icon} {maintenanceTeams[maintenanceAssignment.selectedTeam].name} - 
-                       {t.taka}{maintenanceTeams[maintenanceAssignment.selectedTeam].costPerHour}/hour
-                     </span>
-                   )}
-                 </div>
-                 <div className="flex space-x-3">
-                   <button
-                     onClick={handleCloseAssignMaintenanceModal}
-                     className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium transition-colors"
-                   >
-                     {t.cancel}
-                   </button>
-                   <button
-                     onClick={handleAssignMaintenanceWork}
-                     className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-                   >
-                     {t.assignWork}
-                   </button>
-                 </div>
-               </div>
-             </div>
-           </motion.div>
-         </div>
-       )}
+              {/* Special Instructions */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  {t.specialInstructions}
+                </label>
+                <textarea
+                  value={maintenanceAssignment.specialInstructions}
+                  onChange={(e) => handleMaintenanceAssignmentChange('specialInstructions', e.target.value)}
+                  placeholder={t.instructionsPlaceholder}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                />
+              </div>
+
+              {/* Cost and Scheduling */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <span className="text-green-600 mr-2">📅</span>
+                  {t.schedulingSection}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {t.costApprovalLimit} ({t.taka})
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={maintenanceAssignment.costApprovalLimit}
+                      onChange={(e) => handleMaintenanceAssignmentChange('costApprovalLimit', e.target.value)}
+                      placeholder={t.costLimitPlaceholder}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {t.visitDate}
+                    </label>
+                    <input
+                      type="date"
+                      value={maintenanceAssignment.scheduledDate}
+                      onChange={(e) => handleMaintenanceAssignmentChange('scheduledDate', e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
+                {maintenanceAssignment.scheduledDate && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {t.visitTime}
+                    </label>
+                    <input
+                      type="time"
+                      value={maintenanceAssignment.scheduledTime}
+                      onChange={(e) => handleMaintenanceAssignmentChange('scheduledTime', e.target.value)}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Notifications */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <span className="text-purple-600 mr-2">🔔</span>
+                  {t.notificationSettings}
+                </h3>
+                <div className="space-y-3">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={maintenanceAssignment.notifyTeam}
+                      onChange={(e) => handleMaintenanceAssignmentChange('notifyTeam', e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-slate-700">{t.notifyTeam}</span>
+                  </label>
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={maintenanceAssignment.notifyTenant}
+                      onChange={(e) => handleMaintenanceAssignmentChange('notifyTenant', e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-slate-700">{t.notifyTenant}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-xl">
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-slate-600">
+                  {maintenanceAssignment.selectedTeam && maintenanceTeams[maintenanceAssignment.selectedTeam] && (
+                    <span>
+                      {maintenanceTeams[maintenanceAssignment.selectedTeam].icon} {maintenanceTeams[maintenanceAssignment.selectedTeam].name} - 
+                      {t.taka}{maintenanceTeams[maintenanceAssignment.selectedTeam].costPerHour}/hour
+                    </span>
+                  )}
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={handleCloseAssignMaintenanceModal}
+                    className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium transition-colors"
+                  >
+                    {t.cancel}
+                  </button>
+                  <button
+                    onClick={handleAssignMaintenanceWork}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                  >
+                    {t.assignWork}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }

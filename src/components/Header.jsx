@@ -1,14 +1,32 @@
 import { motion } from 'framer-motion'
-import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabaseClient'
 
 const Header = ({ language, setLanguage }) => {
+  const [session, setSession] = useState(null)
   const navigate = useNavigate()
-  const location = useLocation()
-  
-  // Check if user is on dashboard (logged in)
-  const isLoggedIn = location.pathname === '/landlord' || location.pathname === '/tenant'
-  
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      setSession(session)
+    }
+
+    fetchSession()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    navigate('/login')
+  }
+
   const translations = {
     en: {
       tagline: "Digital Bridge of Trust",
@@ -17,7 +35,10 @@ const Header = ({ language, setLanguage }) => {
       signup: "Sign Up",
       dashboard: "Dashboard",
       logout: "Log Out",
-      profile: "Profile"
+      profile: "Profile",
+      features: "Features",
+      pricing: "Pricing",
+      faq: "FAQ"
     },
     bn: {
       tagline: "বিশ্বাসের ডিজিটাল সেতু",
@@ -26,7 +47,10 @@ const Header = ({ language, setLanguage }) => {
       signup: "সাইন আপ",
       dashboard: "ড্যাশবোর্ড",
       logout: "লগ আউট",
-      profile: "প্রোফাইল"
+      profile: "প্রোফাইল",
+      features: "বৈশিষ্ট্য",
+      pricing: "মূল্য",
+      faq: "প্রশ্নাবলী"
     }
   }
 
@@ -58,7 +82,7 @@ const Header = ({ language, setLanguage }) => {
             className="flex items-center gap-6"
           >
             {/* Auth Buttons / User Menu */}
-            {!isLoggedIn ? (
+            {!session ? (
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => navigate('/login')}
@@ -76,13 +100,7 @@ const Header = ({ language, setLanguage }) => {
             ) : (
               <div className="flex items-center gap-3">
                 <button 
-                  onClick={() => navigate(location.pathname === '/tenant' ? '/tenant' : '/landlord')}
-                  className="text-slate-700 hover:text-blue-700 font-medium text-sm transition-colors"
-                >
-                  {currentLang.dashboard}
-                </button>
-                <button 
-                  onClick={() => navigate('/')}
+                  onClick={handleLogout}
                   className="text-slate-700 hover:text-red-700 font-medium text-sm transition-colors"
                 >
                   {currentLang.logout}

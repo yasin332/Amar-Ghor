@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { supabase } from '../lib/supabaseClient'
 
 const MaintenanceHomepage = ({ language = 'en' }) => {
   const [activeTab, setActiveTab] = useState('overview')
@@ -38,41 +39,20 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
   })
   
   // Work orders state (to allow updates)
-  const [workOrdersData, setWorkOrdersData] = useState([
-    {
-      id: 1,
-      property: "House 45, Road 12, Dhanmondi",
-      issue: "Leaking faucet in kitchen",
-      priority: "medium",
-      assignedDate: "Dec 20, 2024",
-      status: "pending",
-      description: "Kitchen sink faucet has been dripping for 3 days. Water waste is concerning.",
-      tenant: "Fatima Khan",
-      phone: "01712345678"
-    },
-    {
-      id: 2,
-      property: "Apt 3B, Building 7, Gulshan",
-      issue: "Air conditioning not cooling",
-      priority: "high",
-      assignedDate: "Dec 19, 2024",
-      status: "inProgress",
-      description: "AC in master bedroom stopped working. Need immediate repair due to heat.",
-      tenant: "Rahman Ahmed",
-      phone: "01787654321"
-    },
-    {
-      id: 3,
-      property: "House 12, Road 5, Uttara",
-      issue: "Electrical outlet not working",
-      priority: "low",
-      assignedDate: "Dec 18, 2024",
-      status: "completed",
-      description: "Living room electrical outlet needs repair. May require rewiring.",
-      tenant: "Sarah Khan",
-      phone: "01698765432"
+  const [workOrdersData, setWorkOrdersData] = useState([])
+
+  useEffect(() => {
+    const fetchWorkOrders = async () => {
+      const { data, error } = await supabase
+        .from('maintenance_requests')
+        .select('*')
+      
+      if (error) console.error('Error fetching work orders:', error)
+      else setWorkOrdersData(data)
     }
-  ])
+
+    fetchWorkOrders()
+  }, [])
 
   const translations = {
     en: {
@@ -234,19 +214,37 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
     setCurrentLanguage(prev => prev === 'en' ? 'bn' : 'en')
   }
 
-  // Sample maintenance team data
-  const teamData = {
-    name: t.teamName,
-    totalAssigned: 12,
-    completedToday: 3,
-    pendingTasks: 5,
-    upcomingJobs: 4,
-    specialization: "Plumbing & Electrical"
-  }
+  // Calculate stats from live data
+  const completedToday = workOrdersData.filter(order => {
+    const completionDate = new Date(order.completed_at)
+    const today = new Date()
+    return order.status === 'completed' && completionDate.toDateString() === today.toDateString()
+  }).length
+
+  const pendingTasks = workOrdersData.filter(order => order.status === 'pending' || order.status === 'inProgress').length
+
+  const upcomingJobs = workOrdersData.filter(order => {
+    const assignedDate = new Date(order.assigned_date)
+    const today = new Date()
+    return assignedDate > today
+  }).length
 
   // Handler functions
-  const handleCompleteWorkOrder = (e) => {
+  const handleCompleteWorkOrder = async (e) => {
     e.preventDefault()
+    
+    const { data, error } = await supabase
+      .from('maintenance_requests')
+      .update({ status: 'completed' })
+      .eq('id', selectedWorkOrder.id)
+      .select()
+
+    if (error) {
+      console.error('Error completing work order:', error)
+      alert('Failed to complete work order.')
+      return
+    }
+
     // Update work order status
     setWorkOrdersData(prev => 
       prev.map(order => 
@@ -355,75 +353,40 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title={t.totalAssigned}
-          value={teamData.totalAssigned}
+          value={workOrdersData.length}
           icon="📋"
           actionButton={t.viewWorkOrders}
           onClick={() => setActiveTab('workOrders')}
         />
         <StatCard
           title={t.completedToday}
-          value={teamData.completedToday}
+          value={completedToday}
           icon="✅"
         />
         <StatCard
           title={t.pendingTasks}
-          value={teamData.pendingTasks}
+          value={pendingTasks}
           icon="⏳"
         />
         <StatCard
           title={t.upcomingJobs}
-          value={teamData.upcomingJobs}
+          value={upcomingJobs}
           icon="📅"
           actionButton={t.mySchedule}
           onClick={() => setActiveTab('schedule')}
         />
       </div>
 
-      {/* Today's Schedule */}
+      {/* Today's Schedule - Placeholder */}
       <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 p-6">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">{t.todaysJobs}</h3>
-        <div className="space-y-3">
-          {todaysSchedule.map((job, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center gap-4">
-                <div className="text-sm font-medium text-blue-600">{job.time}</div>
-                <div>
-                  <div className="text-sm font-medium text-slate-800">{job.task}</div>
-                  <div className="text-xs text-slate-600">{job.property}</div>
-                </div>
-              </div>
-              <div className="text-xs text-slate-500">{job.duration}</div>
-            </div>
-          ))}
-        </div>
+        <p className="text-slate-500 text-sm">Today's schedule view will be implemented here.</p>
       </div>
 
-      {/* Recent Activity */}
+      {/* Recent Activity - Placeholder */}
       <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 p-6">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">{t.recentActivity}</h3>
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-            <span className="text-green-600">✅</span>
-            <div className="text-sm">
-              <span className="font-medium">Completed:</span> Electrical outlet repair at House 12, Uttara
-            </div>
-            <div className="text-xs text-slate-500 ml-auto">2 hours ago</div>
-          </div>
-          <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
-            <span className="text-yellow-600">🔧</span>
-            <div className="text-sm">
-              <span className="font-medium">Started:</span> AC repair at Apt 3B, Gulshan
-            </div>
-            <div className="text-xs text-slate-500 ml-auto">4 hours ago</div>
-          </div>
-          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-            <span className="text-blue-600">📋</span>
-            <div className="text-sm">
-              <span className="font-medium">Assigned:</span> New work order for faucet repair
-            </div>
-            <div className="text-xs text-slate-500 ml-auto">6 hours ago</div>
-          </div>
-        </div>
+        <p className="text-slate-500 text-sm">Recent activity feed will be implemented here.</p>
       </div>
     </div>
   )
