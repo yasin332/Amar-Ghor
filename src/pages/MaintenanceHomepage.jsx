@@ -40,19 +40,86 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
   
   // Work orders state (to allow updates)
   const [workOrdersData, setWorkOrdersData] = useState([])
+  
+  // Team data state
+  const [teamData, setTeamData] = useState({
+    name: "Ahmed Maintenance Team",
+    specialization: "Plumbing & Electrical",
+    id: null
+  })
+
+  // Error state
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchWorkOrders = async () => {
-      const { data, error } = await supabase
-        .from('maintenance_requests')
-        .select('*')
-      
-      if (error) console.error('Error fetching work orders:', error)
-      else setWorkOrdersData(data)
+      try {
+        const { data, error } = await supabase
+          .from('maintenance_requests')
+          .select('*')
+        
+        if (error) {
+          console.error('Error fetching work orders:', error)
+          setError('Failed to fetch work orders')
+        } else {
+          setWorkOrdersData(data || [])
+        }
+      } catch (err) {
+        console.error('Error fetching work orders:', err)
+        setError('Failed to fetch work orders')
+      }
     }
 
     fetchWorkOrders()
   }, [])
+
+  useEffect(() => {
+    const fetchTeamData = async () => {
+      try {
+        // Get the current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError) {
+          console.error('Error getting user:', userError)
+          setError('Failed to get user information')
+          return
+        }
+
+        if (user) {
+          // Fetch team data based on user ID
+          const { data: teamData, error: teamError } = await supabase
+            .from('maintenance_teams')
+            .select('*')
+            .eq('user_id', user.id)
+            .single()
+
+          if (teamError) {
+            console.warn('Maintenance teams table not found, using fallback data')
+            // Keep the default team data if table doesn't exist
+          } else if (teamData) {
+            setTeamData({
+              name: teamData.team_name || "Ahmed Maintenance Team",
+              specialization: teamData.specialization || "Plumbing & Electrical",
+              id: teamData.id
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching team data:', error)
+        setError('Failed to fetch team data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTeamData()
+  }, [])
+
+  // Update currentLanguage when language prop changes
+  useEffect(() => {
+    setCurrentLanguage(language)
+  }, [language])
 
   const translations = {
     en: {
@@ -128,7 +195,8 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
       settingsUpdated: "Settings updated successfully",
       generateReport: "Generate Report",
       emailNotifications: "Email Notifications",
-      smsNotifications: "SMS Notifications"
+      smsNotifications: "SMS Notifications",
+      logout: "Logout"
     },
     bn: {
       welcome: "স্বাগতম",
@@ -203,7 +271,8 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
       settingsUpdated: "সেটিংস সফলভাবে আপডেট হয়েছে",
       generateReport: "রিপোর্ট তৈরি করুন",
       emailNotifications: "ইমেইল বিজ্ঞপ্তি",
-      smsNotifications: "এসএমএস বিজ্ঞপ্তি"
+      smsNotifications: "এসএমএস বিজ্ঞপ্তি",
+      logout: "লগআউট"
     }
   }
 
@@ -300,6 +369,22 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
 
   const handleGenerateReport = (reportType) => {
     alert(`${t.generateReport}: ${reportType}`)
+  }
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Error signing out:', error)
+        alert('Failed to log out. Please try again.')
+      } else {
+        // Redirect to login page
+        window.location.href = '/login'
+      }
+    } catch (error) {
+      console.error('Error during logout:', error)
+      alert('An error occurred during logout. Please try again.')
+    }
   }
 
   const todaysSchedule = [
@@ -823,6 +908,37 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
     </Modal>
   )
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-slate-600">Loading maintenance dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">Something went wrong</h1>
+          <p className="text-slate-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background */}
@@ -834,17 +950,31 @@ const MaintenanceHomepage = ({ language = 'en' }) => {
       {/* Header */}
       <div className="relative z-20 bg-white/95 backdrop-blur-sm border-b-2 border-slate-300 shadow-sm mt-4">
         <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* Top Row with Language Switcher */}
-          <div className="flex justify-end mb-4">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={toggleLanguage}
-              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border border-slate-300"
-            >
-              <span className="text-lg">🌐</span>
-              <span>Language: {currentLanguage === 'en' ? 'EN' : 'বাং'}</span>
-            </motion.button>
+          {/* Top Row with Language Switcher and Logout */}
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-600">Welcome, {teamData.name}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleLanguage}
+                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border border-slate-300"
+              >
+                <span className="text-lg">🌐</span>
+                <span>Language: {currentLanguage === 'en' ? 'EN' : 'বাং'}</span>
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleLogout}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                <span className="text-lg">🚪</span>
+                <span>{t.logout}</span>
+              </motion.button>
+            </div>
           </div>
           
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">

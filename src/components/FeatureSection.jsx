@@ -7,7 +7,7 @@ const FeatureSection = ({ language = 'en' }) => {
   const translations = {
     en: {
       title: "Why Choose",
-      titleHighlight: "Amar Ghor",
+      titleHighlight: "আমার ঘর",
       subtitle: "Built specifically for the unique needs of",
       subtitleHighlight: "Bangladesh's rental market.",
       ctaButton: "Start Building Trust Today"

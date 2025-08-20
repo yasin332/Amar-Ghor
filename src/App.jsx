@@ -4,6 +4,7 @@ import Header from './components/Header'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import LandlordHomepage from './pages/LandlordHomepage'
 import TenantHomepage from './pages/TenantHomepage'
 import MaintenanceHomepage from './pages/MaintenanceHomepage'
@@ -23,6 +24,7 @@ function AppContent() {
         <Route path="/" element={<LandingPage language={language} />} />
         <Route path="/login" element={<LoginPage language={language} />} />
         <Route path="/signup" element={<SignupPage language={language} />} />
+        <Route path="/reset-password" element={<ResetPasswordPage language={language} />} />
         <Route 
           path="/landlord" 
           element={

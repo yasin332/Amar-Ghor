@@ -1,4 +1,4 @@
-# Amar Ghor - Property Management System
+# আমার ঘর - Property Management System
 
 A modern, bilingual property management web application built with React and Vite, designed for landlords and tenants in Bangladesh.
 
@@ -136,4 +136,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Amar Ghor** - Making property management simple and efficient for everyone! 🏠✨ 
+**আমার ঘর** - Making property management simple and efficient for everyone! 🏠✨ 

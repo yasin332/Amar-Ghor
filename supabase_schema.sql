@@ -153,6 +153,34 @@ create policy "Users can view messages they sent or received." on messages
 create policy "Users can insert messages." on messages
   for insert with check (auth.uid() = sender_id);
 
+-- Create reminders table
+create table reminders (
+  id uuid default gen_random_uuid() primary key,
+  sender_id uuid references public.profiles(id) not null,
+  recipient_id uuid references public.profiles(id) not null,
+  tenant_id uuid references public.tenants(id) not null,
+  reminder_type text not null,
+  delivery_method text not null,
+  message text not null,
+  scheduled_date timestamptz,
+  sent_date timestamptz,
+  status text default 'pending',
+  created_at timestamptz default now()
+);
+
+-- Set up Row Level Security (RLS) for reminders
+alter table reminders
+  enable row level security;
+
+create policy "Landlords can view their own reminders." on reminders
+  for select using (auth.uid() = sender_id);
+
+create policy "Landlords can insert reminders." on reminders
+  for insert with check (auth.uid() = sender_id);
+
+create policy "Landlords can update their own reminders." on reminders
+  for update using (auth.uid() = sender_id);
+
 -- Create maintenance_teams table
 create table maintenance_teams (
   id uuid default gen_random_uuid() primary key,

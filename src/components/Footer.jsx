@@ -26,7 +26,7 @@ const Footer = () => {
           {/* Brand Section */}
           <div className="md:col-span-2">
             <h3 className="text-2xl font-bold mb-4 text-gradient">
-              Amar Ghor
+              আমার ঘর
             </h3>
             <p className="text-gray-300 mb-6 leading-relaxed">
               Building trust between landlords and tenants through transparent, 
@@ -99,7 +99,7 @@ const Footer = () => {
           className="border-t border-gray-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4"
         >
           <p className="text-gray-400 text-sm">
-            © 2024 Amar Ghor. All rights reserved.
+            © 2024 আমার ঘর. All rights reserved.
           </p>
           
           <div className="flex gap-6">

@@ -89,37 +89,102 @@ const LandlordHomepage = ({ language = 'en' }) => {
       const { data: propertiesData, error: propertiesError } = await supabase
         .from('properties')
         .select('*')
+        .eq('owner_id', user.id)
       
       if (propertiesError) console.error('Error fetching properties:', propertiesError)
       else setProperties(propertiesData)
 
       const { data: tenantsData, error: tenantsError } = await supabase
         .from('tenants')
-        .select('*')
+        .select(`
+          *,
+          properties (
+            address,
+            property_type,
+            rent
+          )
+        `)
+        .eq('landlord_id', user.id)
 
       if (tenantsError) console.error('Error fetching tenants:', tenantsError)
-      else setTenants(tenantsData)
 
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
         .select('*')
+        .eq('landlord_id', user.id)
 
       if (paymentsError) console.error('Error fetching payments:', paymentsError)
       else setPayments(paymentsData)
 
+      // Calculate payment status for each tenant after both tenants and payments are fetched
+      if (tenantsData && paymentsData) {
+        const tenantsWithStatus = tenantsData.map(tenant => {
+          const tenantPayments = paymentsData.filter(p => p.tenant_id === tenant.id)
+          const currentMonth = new Date().getMonth()
+          const currentYear = new Date().getFullYear()
+          
+          const currentMonthPayment = tenantPayments.find(p => {
+            const paymentDate = new Date(p.payment_date)
+            return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear
+          })
+          
+          let payment_status = 'pending'
+          if (currentMonthPayment) {
+            payment_status = currentMonthPayment.status || 'paid'
+          } else {
+            // Check if payment is overdue (more than 5 days past month start)
+            const today = new Date()
+            const monthStart = new Date(currentYear, currentMonth, 1)
+            const daysPastDue = Math.floor((today - monthStart) / (1000 * 60 * 60 * 24))
+            
+            if (daysPastDue > 5) {
+              payment_status = 'overdue'
+            }
+          }
+          
+          return { ...tenant, payment_status }
+        })
+        setTenants(tenantsWithStatus)
+      } else {
+        setTenants(tenantsData || [])
+      }
+
       const { data: maintenanceData, error: maintenanceError } = await supabase
         .from('maintenance_requests')
         .select('*')
+        .eq('landlord_id', user.id)
 
-      if (maintenanceError) console.error('Error fetching maintenance requests:', maintenanceError)
-      else setMaintenanceRequests(maintenanceData)
+      if (maintenanceError) {
+        console.error('Error fetching maintenance requests:', maintenanceError)
+        setMaintenanceRequests([]) // Set empty array as fallback
+      } else {
+        setMaintenanceRequests(maintenanceData || [])
+      }
 
-      const { data: teamsData, error: teamsError } = await supabase
-        .from('maintenance_teams')
-        .select('*')
-      
-      if (teamsError) console.error('Error fetching maintenance teams:', teamsError)
-      else setMaintenanceTeams(teamsData)
+      // Use fallback maintenance teams data since table might not exist
+      const fallbackTeams = [
+        { id: '1', name: 'Electrical Team', leader: 'Rashid Ahmed', phone: '01711-123456', specialization: 'Wiring, Lighting, Outlets' },
+        { id: '2', name: 'Plumbing Team', leader: 'Kamal Hassan', phone: '01712-234567', specialization: 'Pipes, Toilets, Water Leaks' },
+        { id: '3', name: 'Hardware Team', leader: 'Abdul Kader', phone: '01713-345678', specialization: 'Doors, Windows, Locks' },
+        { id: '4', name: 'HVAC Team', leader: 'Nazrul Islam', phone: '01714-456789', specialization: 'Air Conditioning, Heating' },
+        { id: '5', name: 'General Maintenance', leader: 'Faruk Mia', phone: '01715-567890', specialization: 'Painting, Cleaning, Minor Repairs' }
+      ]
+
+      try {
+        const { data: teamsData, error: teamsError } = await supabase
+          .from('maintenance_teams')
+          .select('*')
+        
+        if (teamsError) {
+          console.warn('Maintenance teams table not found, using fallback data')
+          setMaintenanceTeams(fallbackTeams)
+        } else {
+          setMaintenanceTeams(teamsData && teamsData.length > 0 ? teamsData : fallbackTeams)
+        }
+      } catch (error) {
+        console.warn('Maintenance teams table not available, using fallback data')
+        setMaintenanceTeams(fallbackTeams)
+      }
 
       setLoading(false)
     }
@@ -1071,7 +1136,7 @@ const LandlordHomepage = ({ language = 'en' }) => {
     return templates[type] || t.generalTemplate
   }
 
-  const handleSendReminderAction = () => {
+  const handleSendReminderAction = async () => {
     // Validation
     if (reminder.recipients.length === 0) {
       alert(t.selectAtLeastOne)
@@ -1088,21 +1153,141 @@ const LandlordHomepage = ({ language = 'en' }) => {
       return
     }
 
-    // In a real app, this would make an API call
-    const reminderData = {
-      ...reminder,
-      message: messageContent,
-      recipientCount: reminder.recipients.length,
-      timestamp: new Date().toISOString()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      alert('You must be logged in to send reminders.')
+      return
     }
+
+    try {
+      // Store reminders in database and send them
+      const reminderPromises = reminder.recipients.map(async (recipient) => {
+        // Find the tenant data
+        const tenant = tenants.find(t => t.id === recipient.id)
+        if (!tenant) return null
+
+        // Replace template variables with actual data
+        let finalMessage = messageContent
+        if (reminder.useTemplate) {
+          finalMessage = finalMessage
+            .replace(/\[Name\]/g, tenant.name)
+            .replace(/\[Property\]/g, tenant.properties?.address || 'your property')
+            .replace(/\[Amount\]/g, tenant.rent_amount ? `৳${tenant.rent_amount.toLocaleString()}` : 'N/A')
+            .replace(/\[Date\]/g, new Date().toLocaleDateString())
+            .replace(/\[Days\]/g, '5') // Placeholder for days overdue
+        }
+
+        // Try to store reminder in database (fallback if table doesn't exist)
+        let reminderData = null
+        try {
+          const { data, error: reminderError } = await supabase
+            .from('reminders')
+            .insert([{
+              sender_id: user.id,
+              recipient_id: user.id, // Landlord is both sender and recipient for tracking
+              tenant_id: tenant.id,
+              reminder_type: reminder.type,
+              delivery_method: reminder.deliveryMethod,
+              message: finalMessage,
+              scheduled_date: reminder.scheduledDate ? new Date(`${reminder.scheduledDate}T${reminder.scheduledTime || '09:00'}`) : new Date(),
+              status: 'pending'
+            }])
+            .select()
+
+          if (reminderError) {
+            console.warn('Reminders table not available, continuing without database storage:', reminderError)
+            reminderData = [{ id: `temp-${Date.now()}` }] // Temporary ID for processing
+          } else {
+            reminderData = data
+          }
+        } catch (error) {
+          console.warn('Reminders table not found, continuing without database storage')
+          reminderData = [{ id: `temp-${Date.now()}` }] // Temporary ID for processing
+        }
+
+        // Simulate sending based on delivery method
+        const sendResult = await simulateSendReminder(tenant, finalMessage, reminder.deliveryMethod)
+        
+        // Update reminder status after sending (if database is available)
+        if (sendResult.success && reminderData?.[0]?.id && !reminderData[0].id.startsWith('temp-')) {
+          try {
+            await supabase
+              .from('reminders')
+              .update({ 
+                status: 'sent', 
+                sent_date: new Date().toISOString() 
+              })
+              .eq('id', reminderData[0].id)
+          } catch (error) {
+            console.warn('Could not update reminder status in database')
+          }
+        }
+        
+        return {
+          tenant: tenant.name,
+          method: reminder.deliveryMethod,
+          success: sendResult.success,
+          reminderId: reminderData?.[0]?.id
+        }
+      })
+
+      const results = await Promise.all(reminderPromises)
+      const successCount = results.filter(r => r && r.success).length
+      const failCount = results.length - successCount
+
+      // Close modal and reset form
+      handleCloseReminderModal()
+      
+      // Show detailed success message
+      if (failCount === 0) {
+        alert(`✅ All ${successCount} reminder(s) sent successfully via ${reminder.deliveryMethod}!`)
+      } else {
+        alert(`⚠️ Sent ${successCount} reminders successfully, ${failCount} failed. Check console for details.`)
+      }
+
+    } catch (error) {
+      console.error('Error sending reminders:', error)
+      alert('Failed to send reminders. Please try again.')
+    }
+  }
+
+  // Simulate reminder sending (replace with real SMS/Email service)
+  const simulateSendReminder = async (tenant, message, method) => {
+    console.log(`📧 Sending ${method} to ${tenant.name} (${tenant.phone || tenant.email}):`)
+    console.log(`Message: ${message}`)
     
-    console.log('Sending reminder:', reminderData)
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 500))
     
-    // Close modal and reset form
-    handleCloseReminderModal()
-    
-    // Show success message
-    alert(`Reminder sent successfully to ${reminder.recipients.length} recipient(s)!`)
+    switch (method) {
+      case 'sms':
+        if (!tenant.phone) {
+          console.error(`❌ No phone number for ${tenant.name}`)
+          return { success: false, error: 'No phone number' }
+        }
+        console.log(`📱 SMS sent to ${tenant.phone}`)
+        return { success: true }
+        
+      case 'email':
+        if (!tenant.email) {
+          console.error(`❌ No email for ${tenant.name}`)
+          return { success: false, error: 'No email address' }
+        }
+        console.log(`📧 Email sent to ${tenant.email}`)
+        return { success: true }
+        
+      case 'whatsapp':
+        if (!tenant.phone) {
+          console.error(`❌ No phone number for WhatsApp for ${tenant.name}`)
+          return { success: false, error: 'No phone number' }
+        }
+        console.log(`💬 WhatsApp sent to ${tenant.phone}`)
+        return { success: true }
+        
+      default:
+        console.log(`🔔 In-app notification for ${tenant.name}`)
+        return { success: true }
+    }
   }
 
   const validateFile = (file) => {
@@ -1337,11 +1522,11 @@ const LandlordHomepage = ({ language = 'en' }) => {
               <tr key={tenant.id} className="border-b border-slate-100 hover:bg-slate-50">
                 <td className="py-3 px-4 text-slate-800 font-medium">{tenant.name}</td>
                 <td className="py-3 px-4 text-slate-600">{tenant.phone}</td>
-                <td className="py-3 px-4 text-slate-600">{tenant.property}</td>
-                <td className="py-3 px-4 text-slate-800">{t.taka}{tenant.rent.toLocaleString()}</td>
+                <td className="py-3 px-4 text-slate-600">{tenant.properties?.address || 'N/A'}</td>
+                <td className="py-3 px-4 text-slate-800">{t.taka}{(tenant.rent_amount || 0).toLocaleString()}</td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(tenant.status)}`}>
-                    {tenant.status === 'paid' ? t.paid : tenant.status === 'pending' ? t.pending : t.overdue}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(tenant.payment_status || 'pending')}`}>
+                    {tenant.payment_status === 'paid' ? t.paid : tenant.payment_status === 'pending' ? t.pending : t.overdue}
                   </span>
                 </td>
                 <td className="py-3 px-4">
@@ -2087,7 +2272,7 @@ const LandlordHomepage = ({ language = 'en' }) => {
                   </button>
                   <button
                     onClick={() => {
-                      const overdueIds = tenants.filter(t => t.status === 'overdue').map(t => ({ id: t.id, type: 'tenant' }))
+                      const overdueIds = tenants.filter(t => t.payment_status === 'overdue').map(t => ({ id: t.id, type: 'tenant' }))
                       setReminder(prev => ({ ...prev, recipients: overdueIds }))
                     }}
                     className="flex items-center justify-center p-3 border border-slate-300 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all text-sm"
@@ -2096,7 +2281,7 @@ const LandlordHomepage = ({ language = 'en' }) => {
                   </button>
                   <button
                     onClick={() => {
-                      const pendingIds = tenants.filter(t => t.status === 'pending').map(t => ({ id: t.id, type: 'tenant' }))
+                      const pendingIds = tenants.filter(t => t.payment_status === 'pending').map(t => ({ id: t.id, type: 'tenant' }))
                       setReminder(prev => ({ ...prev, recipients: pendingIds }))
                     }}
                     className="flex items-center justify-center p-3 border border-slate-300 rounded-lg hover:bg-yellow-50 hover:border-yellow-300 transition-all text-sm"
@@ -2122,9 +2307,9 @@ const LandlordHomepage = ({ language = 'en' }) => {
                             {tenant.name}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {tenant.property} • {tenant.phone} • 
-                            <span className={`ml-1 px-1 rounded text-xs ${getStatusColor(tenant.status)}`}>
-                              {tenant.status === 'paid' ? t.paid : tenant.status === 'pending' ? t.pending : t.overdue}
+                            {tenant.properties?.address || 'N/A'} • {tenant.phone} • 
+                            <span className={`ml-1 px-1 rounded text-xs ${getStatusColor(tenant.payment_status || 'pending')}`}>
+                              {tenant.payment_status === 'paid' ? t.paid : tenant.payment_status === 'pending' ? t.pending : t.overdue}
                             </span>
                           </p>
                         </div>

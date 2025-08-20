@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { getErrorMessage, isValidEmail, isValidPassword } from '../lib/utils'
 import { supabase } from '../lib/supabaseClient'
+import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator'
 
 const SignupPage = ({ language = 'en' }) => {
   const [formData, setFormData] = useState({
@@ -25,7 +26,7 @@ const SignupPage = ({ language = 'en' }) => {
 
   const translations = {
     en: {
-      title: "Join Amar Ghor",
+      title: "Join আমার ঘর",
       subtitle: "Create your account and start building trust",
       firstNameLabel: "First Name",
       firstNamePlaceholder: "Enter your first name",
@@ -103,7 +104,7 @@ const SignupPage = ({ language = 'en' }) => {
     if (!formData.phone.trim()) newErrors.phone = 'Phone number is required'
     if (!formData.userType) newErrors.userType = 'Please select your role'
     if (!formData.area.trim()) newErrors.area = 'Area is required'
-    if (!isValidPassword(formData.password)) newErrors.password = 'Password must be at least 8 characters'
+    if (!isValidPassword(formData.password)) newErrors.password = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match'
     if (!formData.agreeToTerms) newErrors.agreeToTerms = 'You must agree to the terms and conditions'
     
@@ -174,7 +175,7 @@ const SignupPage = ({ language = 'en' }) => {
           <div className="text-center mb-8">
             <Link to="/" className="inline-block">
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-700 bg-clip-text text-transparent mb-2">
-                Amar Ghor
+                আমার ঘর
               </h1>
             </Link>
             <p className="text-slate-500 text-sm">
@@ -221,6 +222,9 @@ const SignupPage = ({ language = 'en' }) => {
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/70 backdrop-blur-sm"
                     required
                   />
+                  {errors.firstName && (
+                    <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -230,11 +234,14 @@ const SignupPage = ({ language = 'en' }) => {
                     type="text"
                     name="lastName"
                     value={formData.lastName}
-                    onChange={handleInputChange}
                     placeholder={t.lastNamePlaceholder}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/70 backdrop-blur-sm"
                     required
                   />
+                  {errors.lastName && (
+                    <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
+                  )}
                 </div>
               </div>
 
@@ -299,6 +306,9 @@ const SignupPage = ({ language = 'en' }) => {
                     </div>
                   </label>
                 </div>
+                {errors.userType && (
+                  <p className="mt-1 text-sm text-red-600">{errors.userType}</p>
+                )}
               </div>
 
               {/* Contact Fields */}
@@ -316,6 +326,9 @@ const SignupPage = ({ language = 'en' }) => {
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/70 backdrop-blur-sm"
                     required
                   />
+                  {errors.email && (
+                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -330,6 +343,9 @@ const SignupPage = ({ language = 'en' }) => {
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/70 backdrop-blur-sm"
                     required
                   />
+                  {errors.phone && (
+                    <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+                  )}
                 </div>
               </div>
 
@@ -338,16 +354,19 @@ const SignupPage = ({ language = 'en' }) => {
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   {t.areaLabel}
                 </label>
-                <input
-                  type="text"
-                  name="area"
-                  value={formData.area}
-                  onChange={handleInputChange}
-                  placeholder={t.areaPlaceholder}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/70 backdrop-blur-sm"
-                  required
-                />
-              </div>
+                                  <input
+                    type="text"
+                    name="area"
+                    value={formData.area}
+                    onChange={handleInputChange}
+                    placeholder={t.areaPlaceholder}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/70 backdrop-blur-sm"
+                    required
+                  />
+                  {errors.area && (
+                    <p className="mt-1 text-sm text-red-600">{errors.area}</p>
+                  )}
+                </div>
 
               {/* Password Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -373,6 +392,10 @@ const SignupPage = ({ language = 'en' }) => {
                       {showPassword ? t.hidePassword : t.showPassword}
                     </button>
                   </div>
+                  <PasswordStrengthIndicator password={formData.password} language={language} />
+                  {errors.password && (
+                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -396,6 +419,9 @@ const SignupPage = ({ language = 'en' }) => {
                       {showConfirmPassword ? t.hidePassword : t.showPassword}
                     </button>
                   </div>
+                  {errors.confirmPassword && (
+                    <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+                  )}
                 </div>
               </div>
 
@@ -413,6 +439,9 @@ const SignupPage = ({ language = 'en' }) => {
                   {t.agreeToTerms}
                 </label>
               </div>
+              {errors.agreeToTerms && (
+                <p className="mt-1 text-sm text-red-600">{errors.agreeToTerms}</p>
+              )}
 
               {/* Signup Button */}
               <motion.button

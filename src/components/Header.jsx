@@ -68,7 +68,7 @@ const Header = ({ language, setLanguage }) => {
           >
             <Link to="/" className="block">
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-700 bg-clip-text text-transparent">
-                Amar Ghor
+                আমার ঘর
               </h1>
               <p className="text-sm text-slate-500 font-medium">{currentLang.tagline}</p>
             </Link>

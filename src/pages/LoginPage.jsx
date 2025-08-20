@@ -12,6 +12,10 @@ const LoginPage = ({ language = 'en' }) => {
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false)
   
   const navigate = useNavigate()
   const location = useLocation()
@@ -22,7 +26,7 @@ const LoginPage = ({ language = 'en' }) => {
   const translations = {
     en: {
       title: "Welcome Back",
-      subtitle: "Sign in to your Amar Ghor account",
+      subtitle: "Sign in to your আমার ঘর account",
       emailLabel: "Email Address",
       emailPlaceholder: "Enter your email",
       passwordLabel: "Password",
@@ -35,7 +39,14 @@ const LoginPage = ({ language = 'en' }) => {
       phoneLogin: "Continue with Phone",
       noAccount: "Don't have an account?",
       signUpLink: "Sign up here",
-      securityNote: "Your connection is secure and encrypted"
+      securityNote: "Your connection is secure and encrypted",
+      forgotPasswordTitle: "Reset Your Password",
+      forgotPasswordSubtitle: "Enter your email address and we'll send you a link to reset your password.",
+      sendResetLink: "Send Reset Link",
+      sending: "Sending...",
+      resetLinkSent: "Password reset link has been sent to your email!",
+      close: "Close",
+      cancel: "Cancel"
     },
     bn: {
       title: "স্বাগতম",
@@ -52,7 +63,14 @@ const LoginPage = ({ language = 'en' }) => {
       phoneLogin: "ফোন দিয়ে চালিয়ে যান",
       noAccount: "অ্যাকাউন্ট নেই?",
       signUpLink: "এখানে সাইন আপ করুন",
-      securityNote: "আপনার সংযোগ নিরাপদ এবং এনক্রিপ্ট করা"
+      securityNote: "আপনার সংযোগ নিরাপদ এবং এনক্রিপ্ট করা",
+      forgotPasswordTitle: "আপনার পাসওয়ার্ড রিসেট করুন",
+      forgotPasswordSubtitle: "আপনার ইমেল ঠিকানা লিখুন এবং আমরা আপনাকে পাসওয়ার্ড রিসেট করার জন্য একটি লিংক পাঠাব।",
+      sendResetLink: "রিসেট লিংক পাঠান",
+      sending: "পাঠানো হচ্ছে...",
+      resetLinkSent: "পাসওয়ার্ড রিসেট লিংক আপনার ইমেলে পাঠানো হয়েছে!",
+      close: "বন্ধ করুন",
+      cancel: "বাতিল"
     }
   }
 
@@ -145,6 +163,35 @@ const LoginPage = ({ language = 'en' }) => {
     }
   }
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    
+    if (!isValidEmail(forgotPasswordEmail)) {
+      setErrors({ forgotPassword: 'Please enter a valid email address' })
+      return
+    }
+    
+    setForgotPasswordLoading(true)
+    setErrors({ forgotPassword: null })
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+        redirectTo: `${window.location.origin}/reset-password`
+      })
+      
+      if (error) {
+        throw error
+      }
+      
+      setForgotPasswordSuccess(true)
+      setForgotPasswordEmail('')
+    } catch (error) {
+      setErrors({ forgotPassword: getErrorMessage(error) })
+    } finally {
+      setForgotPasswordLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background */}
@@ -167,7 +214,7 @@ const LoginPage = ({ language = 'en' }) => {
           <div className="text-center mb-8">
             <Link to="/" className="inline-block">
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-700 bg-clip-text text-transparent mb-2">
-                Amar Ghor
+                আমার ঘর
               </h1>
             </Link>
             <p className="text-slate-500 text-sm">
@@ -251,6 +298,17 @@ const LoginPage = ({ language = 'en' }) => {
                 {errors.password && (
                   <p className="text-red-500 text-xs mt-1">{errors.password}</p>
                 )}
+                
+                {/* Forgot Password Link */}
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                  >
+                    {t.forgotPassword}
+                  </button>
+                </div>
               </div>
 
               {/* Login Button */}
@@ -307,6 +365,88 @@ const LoginPage = ({ language = 'en' }) => {
           </motion.div>
         </motion.div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowForgotPassword(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                {t.forgotPasswordTitle}
+              </h3>
+              <p className="text-slate-600 text-sm">
+                {t.forgotPasswordSubtitle}
+              </p>
+            </div>
+
+            {!forgotPasswordSuccess ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    {t.emailLabel}
+                  </label>
+                  <input
+                    type="email"
+                    value={forgotPasswordEmail}
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    placeholder={t.emailPlaceholder}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    required
+                  />
+                  {errors.forgotPassword && (
+                    <p className="text-red-500 text-xs mt-1">{errors.forgotPassword}</p>
+                  )}
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPassword(false)
+                      setForgotPasswordEmail('')
+                      setErrors({ forgotPassword: null })
+                      setForgotPasswordSuccess(false)
+                    }}
+                    className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+                  >
+                    {t.cancel}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotPasswordLoading}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                  >
+                    {forgotPasswordLoading ? t.sending : t.sendResetLink}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="text-center space-y-4">
+                <div className="text-green-600 text-4xl">✅</div>
+                <p className="text-slate-700">{t.resetLinkSent}</p>
+                <button
+                  onClick={() => {
+                    setShowForgotPassword(false)
+                    setForgotPasswordSuccess(false)
+                  }}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  {t.close}
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }

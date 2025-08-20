@@ -109,14 +109,23 @@ const TenantHomepage = ({ language = 'en' }) => {
         else setMaintenanceRequests(maintenance)
       }
 
-      // Fetch messages
-      const { data: messagesData, error: messagesError } = await supabase
-        .from('messages')
-        .select('*')
-        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-      
-      if (messagesError) console.error('Error fetching messages:', messagesError)
-      else setMessages(messagesData)
+      // Fetch messages (with fallback if table doesn't exist)
+      try {
+        const { data: messagesData, error: messagesError } = await supabase
+          .from('messages')
+          .select('*')
+          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        
+        if (messagesError) {
+          console.warn('Messages table not found, using empty array:', messagesError)
+          setMessages([])
+        } else {
+          setMessages(messagesData || [])
+        }
+      } catch (error) {
+        console.warn('Messages table not available, using empty array')
+        setMessages([])
+      }
 
       setLoading(false)
     }

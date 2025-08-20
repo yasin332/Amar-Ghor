@@ -104,7 +104,14 @@ export const isValidPhone = (phone) => {
 }
 
 export const isValidPassword = (password, minLength = 8) => {
-  return password && password.length >= minLength
+  if (!password || password.length < minLength) return false
+  
+  const hasUppercase = /[A-Z]/.test(password)
+  const hasLowercase = /[a-z]/.test(password)
+  const hasNumber = /\d/.test(password)
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+  
+  return hasUppercase && hasLowercase && hasNumber && hasSpecial
 }
 
 export const isValidURL = (string) => {

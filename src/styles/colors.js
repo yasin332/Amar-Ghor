@@ -1,4 +1,4 @@
-// Consistent color palette for Amar Ghor
+// Consistent color palette for আমার ঘর
 export const colors = {
   // Primary teal colors
   primary: {
