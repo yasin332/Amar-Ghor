@@ -171,3 +171,4 @@ const PasswordStrengthIndicator = ({ password, language = 'en' }) => {
 export default PasswordStrengthIndicator
 
 
+
