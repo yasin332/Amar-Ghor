@@ -49,15 +49,6 @@ create policy "Landlords can insert their own properties." on properties
 create policy "Landlords can update their own properties." on properties
   for update using (auth.uid() = owner_id);
 
-create policy "Tenants can view their assigned property." on properties
-  for select using (
-    id in (
-      select property_id
-      from public.tenants
-      where email = auth.email()
-    )
-  );
-
 -- Create tenants table
 create table tenants (
   id uuid default gen_random_uuid() primary key,
@@ -86,6 +77,15 @@ create policy "Tenants can view their own details." on tenants
 
 create policy "Landlords can insert tenants into their properties." on tenants
   for insert with check (auth.uid() = landlord_id);
+
+create policy "Tenants can view their assigned property." on properties
+  for select using (
+    id in (
+      select property_id
+      from public.tenants
+      where email = auth.email()
+    )
+  );
 
 -- Create payments table
 create table payments (

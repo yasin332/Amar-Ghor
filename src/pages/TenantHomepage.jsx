@@ -12,33 +12,33 @@ const TenantHomepage = ({ language = 'en' }) => {
   const [paymentHistory, setPaymentHistory] = useState([])
   const [maintenanceRequests, setMaintenanceRequests] = useState([])
   const [messages, setMessages] = useState([])
-  
+
   // Modal states
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
   const [showLeaseModal, setShowLeaseModal] = useState(false)
-  
+
   // Form states
   const [paymentForm, setPaymentForm] = useState({
     amount: 15000,
     method: 'bankTransfer',
     reference: ''
   })
-  
+
   const [maintenanceForm, setMaintenanceForm] = useState({
     issue: '',
     description: '',
     priority: 'medium',
     location: ''
   })
-  
+
   const [messageForm, setMessageForm] = useState({
     subject: '',
     message: ''
   })
-  
+
   const [contactForm, setContactForm] = useState({
     type: 'general',
     message: ''
@@ -59,7 +59,7 @@ const TenantHomepage = ({ language = 'en' }) => {
         .select('first_name, last_name')
         .eq('id', user.id)
         .single()
-      
+
       if (profileError) console.error('Error fetching profile:', profileError)
       else setUserProfile(profile)
 
@@ -83,7 +83,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           )
         `)
         .eq('email', user.email)
-      
+
       if (tenantError) {
         console.error('Error fetching tenant details:', tenantError)
       } else if (tenantDetails && tenantDetails.length > 0) {
@@ -95,7 +95,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           .from('payments')
           .select('*')
           .eq('tenant_id', tenant.id)
-        
+
         if (paymentsError) console.error('Error fetching payment history:', paymentsError)
         else setPaymentHistory(payments)
 
@@ -115,7 +115,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           .from('messages')
           .select('*')
           .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-        
+
         if (messagesError) {
           console.warn('Messages table not found, using empty array:', messagesError)
           setMessages([])
@@ -409,7 +409,7 @@ const TenantHomepage = ({ language = 'en' }) => {
   // Handler functions
   const handlePayment = async (e) => {
     e.preventDefault()
-    
+
     const { data, error } = await supabase
       .from('payments')
       .insert([
@@ -534,7 +534,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <p className="text-slate-600 text-sm font-medium">{title}</p>
           <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
           {actionButton && (
-            <button 
+            <button
               onClick={onClick}
               className="mt-3 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
             >
@@ -551,27 +551,27 @@ const TenantHomepage = ({ language = 'en' }) => {
     <div className="space-y-8">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title={t.currentRent} 
-          value={`${t.taka}${(tenantData.rent_amount || 0).toLocaleString()}`} 
-          icon="💰" 
+        <StatCard
+          title={t.currentRent}
+          value={`${t.taka}${(tenantData.rent_amount || 0).toLocaleString()}`}
+          icon="💰"
         />
-        <StatCard 
-          title={t.nextPayment} 
-          value={`Due Next Month`} 
+        <StatCard
+          title={t.nextPayment}
+          value={`Due Next Month`}
           icon="📅"
           actionButton={t.payNow}
           onClick={() => setShowPaymentModal(true)}
         />
-        <StatCard 
-          title={t.totalPaid} 
-          value={`${t.taka}${totalPaidThisYear.toLocaleString()}`} 
-          icon="📊" 
+        <StatCard
+          title={t.totalPaid}
+          value={`${t.taka}${totalPaidThisYear.toLocaleString()}`}
+          icon="📊"
         />
-        <StatCard 
-          title={t.activeRequests} 
-          value={`${maintenanceRequests.filter(r => r.status !== 'completed').length} pending`} 
-          icon="🔧" 
+        <StatCard
+          title={t.activeRequests}
+          value={`${maintenanceRequests.filter(r => r.status !== 'completed').length} pending`}
+          icon="🔧"
         />
       </div>
 
@@ -584,28 +584,28 @@ const TenantHomepage = ({ language = 'en' }) => {
       >
         <h3 className="text-lg font-semibold text-slate-800 mb-4">{t.quickActions}</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button 
+          <button
             onClick={() => setShowPaymentModal(true)}
             className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group"
           >
             <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">💳</span>
             <span className="text-sm font-medium text-slate-700">{t.payRent}</span>
           </button>
-          <button 
+          <button
             onClick={() => setShowMaintenanceModal(true)}
             className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group"
           >
             <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">🔧</span>
             <span className="text-sm font-medium text-slate-700">{t.requestMaintenance}</span>
           </button>
-          <button 
+          <button
             onClick={() => setShowContactModal(true)}
             className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group"
           >
             <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">📞</span>
             <span className="text-sm font-medium text-slate-700">{t.contactLandlord}</span>
           </button>
-          <button 
+          <button
             onClick={handleViewLease}
             className="flex flex-col items-center p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group"
           >
@@ -736,7 +736,7 @@ const TenantHomepage = ({ language = 'en' }) => {
     >
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold text-slate-800">{t.paymentHistory}</h3>
-        <button 
+        <button
           onClick={() => setShowPaymentModal(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
         >
@@ -770,7 +770,7 @@ const TenantHomepage = ({ language = 'en' }) => {
         </table>
       </div>
       <div className="mt-6 p-4 bg-green-50 rounded-lg">
-        <p className="text-sm text-slate-600">{t.totalPaid}: <span className="font-bold text-green-700">{t.taka}{tenantData.total_paid_this_year.toLocaleString()}</span></p>
+        <p className="text-sm text-slate-600">{t.totalPaid}: <span className="font-bold text-green-700">{t.taka}{totalPaidThisYear.toLocaleString()}</span></p>
       </div>
     </motion.div>
   )
@@ -785,7 +785,7 @@ const TenantHomepage = ({ language = 'en' }) => {
       <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-slate-200">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-slate-800">{t.maintenanceRequests}</h3>
-          <button 
+          <button
             onClick={() => setShowMaintenanceModal(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
           >
@@ -809,16 +809,16 @@ const TenantHomepage = ({ language = 'en' }) => {
                 <p className="text-slate-600 text-sm mt-1">{request.description}</p>
               </div>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
-                {request.status === 'submitted' ? t.submitted : 
-                 request.status === 'inProgress' ? t.inProgress : t.completed}
+                {request.status === 'submitted' ? t.submitted :
+                  request.status === 'inProgress' ? t.inProgress : t.completed}
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
                 <span className="text-slate-500">{t.priority}:</span>
                 <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.priority)}`}>
-                  {request.priority === 'high' ? t.high : 
-                   request.priority === 'medium' ? t.medium : t.low}
+                  {request.priority === 'high' ? t.high :
+                    request.priority === 'medium' ? t.medium : t.low}
                 </span>
               </div>
               <div>
@@ -846,7 +846,7 @@ const TenantHomepage = ({ language = 'en' }) => {
       <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-slate-200">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-slate-800">{t.messageHistory}</h3>
-          <button 
+          <button
             onClick={() => setShowMessageModal(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
           >
@@ -869,10 +869,10 @@ const TenantHomepage = ({ language = 'en' }) => {
               <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">{msg.date}</span>
             </div>
             <div className="mb-3 text-sm text-slate-600">
-              <span className="font-medium">{t.from}:</span> 
+              <span className="font-medium">{t.from}:</span>
               <span className="ml-1 text-slate-800">{msg.from}</span>
               <span className="mx-2">→</span>
-              <span className="font-medium">{t.to}:</span> 
+              <span className="font-medium">{t.to}:</span>
               <span className="ml-1 text-slate-800">{msg.to}</span>
             </div>
             <div className="p-4 bg-slate-50 rounded-lg">
@@ -887,7 +887,7 @@ const TenantHomepage = ({ language = 'en' }) => {
   // Modal Component
   const Modal = ({ isOpen, onClose, title, children }) => {
     if (!isOpen) return null
-    
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <motion.div
@@ -920,7 +920,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <input
             type="number"
             value={paymentForm.amount}
-            onChange={(e) => setPaymentForm(prev => ({...prev, amount: e.target.value}))}
+            onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
           />
@@ -929,7 +929,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <label className="block text-sm font-medium text-slate-700 mb-2">{t.selectPaymentMethod}</label>
           <select
             value={paymentForm.method}
-            onChange={(e) => setPaymentForm(prev => ({...prev, method: e.target.value}))}
+            onChange={(e) => setPaymentForm(prev => ({ ...prev, method: e.target.value }))}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="bankTransfer">{t.bankTransfer}</option>
@@ -942,7 +942,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <input
             type="text"
             value={paymentForm.reference}
-            onChange={(e) => setPaymentForm(prev => ({...prev, reference: e.target.value}))}
+            onChange={(e) => setPaymentForm(prev => ({ ...prev, reference: e.target.value }))}
             placeholder={t.enterReference}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
@@ -975,7 +975,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <input
             type="text"
             value={maintenanceForm.issue}
-            onChange={(e) => setMaintenanceForm(prev => ({...prev, issue: e.target.value}))}
+            onChange={(e) => setMaintenanceForm(prev => ({ ...prev, issue: e.target.value }))}
             placeholder={t.enterIssue}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
@@ -985,7 +985,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <label className="block text-sm font-medium text-slate-700 mb-2">{t.detailedDescription}</label>
           <textarea
             value={maintenanceForm.description}
-            onChange={(e) => setMaintenanceForm(prev => ({...prev, description: e.target.value}))}
+            onChange={(e) => setMaintenanceForm(prev => ({ ...prev, description: e.target.value }))}
             placeholder={t.describeIssue}
             rows="3"
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -997,7 +997,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <input
             type="text"
             value={maintenanceForm.location}
-            onChange={(e) => setMaintenanceForm(prev => ({...prev, location: e.target.value}))}
+            onChange={(e) => setMaintenanceForm(prev => ({ ...prev, location: e.target.value }))}
             placeholder={t.enterLocation}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
@@ -1007,7 +1007,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <label className="block text-sm font-medium text-slate-700 mb-2">{t.selectPriority}</label>
           <select
             value={maintenanceForm.priority}
-            onChange={(e) => setMaintenanceForm(prev => ({...prev, priority: e.target.value}))}
+            onChange={(e) => setMaintenanceForm(prev => ({ ...prev, priority: e.target.value }))}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="low">{t.low}</option>
@@ -1043,7 +1043,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <input
             type="text"
             value={messageForm.subject}
-            onChange={(e) => setMessageForm(prev => ({...prev, subject: e.target.value}))}
+            onChange={(e) => setMessageForm(prev => ({ ...prev, subject: e.target.value }))}
             placeholder={t.enterSubject}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
@@ -1053,7 +1053,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <label className="block text-sm font-medium text-slate-700 mb-2">{t.messageContent}</label>
           <textarea
             value={messageForm.message}
-            onChange={(e) => setMessageForm(prev => ({...prev, message: e.target.value}))}
+            onChange={(e) => setMessageForm(prev => ({ ...prev, message: e.target.value }))}
             placeholder={t.enterMessage}
             rows="4"
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -1087,7 +1087,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <label className="block text-sm font-medium text-slate-700 mb-2">{t.contactType}</label>
           <select
             value={contactForm.type}
-            onChange={(e) => setContactForm(prev => ({...prev, type: e.target.value}))}
+            onChange={(e) => setContactForm(prev => ({ ...prev, type: e.target.value }))}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="general">{t.general}</option>
@@ -1099,7 +1099,7 @@ const TenantHomepage = ({ language = 'en' }) => {
           <label className="block text-sm font-medium text-slate-700 mb-2">{t.contactMessage}</label>
           <textarea
             value={contactForm.message}
-            onChange={(e) => setContactForm(prev => ({...prev, message: e.target.value}))}
+            onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
             placeholder={t.enterMessage}
             rows="4"
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -1207,11 +1207,10 @@ const TenantHomepage = ({ language = 'en' }) => {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                    activeTab === tab.key
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${activeTab === tab.key
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <span>{tab.icon}</span>
                   <span className="hidden sm:inline">{tab.label}</span>
